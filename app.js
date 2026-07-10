@@ -578,7 +578,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 btn.disabled = false; spinner.style.display = 'none';
             } catch(e) { 
                 console.error(e.message);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true); 
+                showToast("Fehler: " + e.message, true); 
                 btn.disabled = false; spinner.style.display = 'none';
             }
         } else {
@@ -650,7 +650,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 }
             } catch (e) {
                 console.error(e.message);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true); 
+                showToast("Fehler: " + e.message, true); 
                 statusSpan.innerText = 'Failed';
                 statusSpan.style.color = 'var(--danger)';
             }
@@ -1127,7 +1127,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 btn.disabled = false; spinner.style.display = 'none';
             } catch(e) { 
                 console.error(e.message);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true); 
+                showToast("Fehler: " + e.message, true); 
                 btn.disabled = false; spinner.style.display = 'none';
             }
         } else {
@@ -1198,7 +1198,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 }
             } catch (e) {
                 console.error(e.message);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true); 
+                showToast("Fehler: " + e.message, true); 
                 statusSpan.innerText = 'Failed';
                 statusSpan.style.color = 'var(--danger)';
             }
@@ -1452,7 +1452,7 @@ REGELN:
                 showToast("Veo Prompt erfolgreich erstellt!");
             } catch (e) {
                 console.error(e);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true);
+                showToast("Fehler: " + e.message, true);
             } finally {
                 aiBtn.disabled = false;
                 spinner.style.display = 'none';
@@ -1526,7 +1526,7 @@ REGELN:
                 }
             } catch (e) {
                 console.error(e);
-                showToast("Server unerreichbar. Bitte öffne  im Browser!", true);
+                showToast("Fehler: " + e.message, true);
                 statusSpan.innerText = 'Failed';
                 statusSpan.style.color = 'var(--danger)';
             } finally {
