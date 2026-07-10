@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Banana Ultimate - AI Multimodal Suite (LM Studio Edition)</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="toast"></div>
+
+    <aside>
+        <div class="brand">
+            <i class="fa-solid fa-layer-group"></i> NANO<span>BANANA</span>
+        </div>
+        
+        <div style="flex-grow: 1;">
+            <div class="nav-section">
+                <div class="nav-label">Core Modules</div>
+                <button class="nav-btn active" onclick="switchTab('gen')"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Generator</button>
+                <button class="nav-btn" onclick="switchTab('char')"><i class="fa-solid fa-user-astronaut"></i> Charakter & ID</button>
+                <button class="nav-btn" onclick="switchTab('edit')"><i class="fa-solid fa-eraser"></i> Edit & Inpaint</button>
+                <button class="nav-btn" onclick="switchTab('cinema')"><i class="fa-solid fa-film"></i> Cinema Edit</button>
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">System Status</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); padding: 4px 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.15); border-radius: 6px; border: 1px solid var(--border-color);">
+                <div>
+                    <span id="api-status-dot" style="color: var(--text-muted);">●</span> LM Studio: <span id="api-status-text" style="font-weight: 600; color: #fff;">Connecting...</span>
+                </div>
+                <button onclick="updateKeyStatus()" class="style-btn" style="padding: 2px 6px; font-size: 0.65rem; border: none; background: rgba(255,255,255,0.05); color: var(--text-muted);" title="Status aktualisieren">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+            </div>
+            
+            <div style="padding: 0 10px;">
+                <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;">Design Theme</label>
+                <select id="themeSelect" onchange="changeTheme()" style="width: 100%; padding: 6px; font-size: 0.8rem; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px;">
+                    <option value="default">Default Dark</option>
+                    <option value="theme-cyan">Cyan Tech (Sci-Fi)</option>
+                    <option value="theme-emerald">Emerald (Clean)</option>
+                    <option value="theme-pink">Pink Punch (Pop)</option>
+                </select>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+
+        <section id="gen" class="tab-content active">
+            <div class="header">
+                <div>
+                    <h1>Prompt Generator <span style="font-size:0.5em; background:var(--primary); padding:2px 8px; border-radius:4px; vertical-align:middle; margin-left:10px;">LOCAL AI</span></h1>
+                    <p>High-Fidelity Prompt Engineering angetrieben durch dein lokales LM Studio.</p>
+                </div>
+                <div style="background:var(--bg-input); padding:4px; border-radius:8px; display:flex; gap:5px;">
+                    <button id="modePhoto" class="btn btn-primary" style="font-size:0.75rem; padding:6px 12px;" onclick="setGenMode('photo')"><i class="fa-regular fa-image"></i> Foto</button>
+                    <button id="modeVideo" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px;" onclick="setGenMode('video')"><i class="fa-solid fa-video"></i> Video</button>
+                </div>
+            </div>
+
+            <div class="smart-section">
+                <div class="card-title" style="margin-bottom:10px;"><i class="fa-solid fa-robot"></i> AI Assistant (Auto-Fill)</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <textarea id="smartInput" class="smart-textarea" placeholder="Beschreibe deine Idee (z.B. 'Cyberpunk Frau im Regen mit Neonlicht')..."></textarea>
+                    <div style="display:flex; flex-direction:column; gap:8px; min-width:180px;">
+                        <button class="btn btn-magic" id="btnAutoFill" onclick="runAutoFill()">
+                            <span class="spinner" id="spinAuto"></span> <i class="fa-solid fa-bolt"></i> Auto-Fill Forms
+                        </button>
+                        <button class="btn btn-secondary" onclick="randomizeForm()" style="width:100%; justify-content:center;">
+                            <i class="fa-solid fa-shuffle"></i> Randomize
+                        </button>
+                        <button class="btn btn-secondary" onclick="document.getElementById('apiSettings').style.display = document.getElementById('apiSettings').style.display === 'none' ? 'block' : 'none'" style="width:100%; justify-content:center; font-size:0.75rem;">
+                            <i class="fa-solid fa-network-wired"></i> Server Config
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="apiSettings" style="display:none; margin-top:15px; padding:15px; background:rgba(0,0,0,0.3); border-radius:8px;">
+                    <label>LM Studio Server URL (Localhost)</label>
+                    <input type="text" id="apiUrl" placeholder="http://localhost:1234/v1" oninput="saveUrl(); debouncedCheckStatus()">
+                    <div style="display:flex; gap:10px; margin-top:10px; align-items:center;">
+                         <select id="modelSelect" style="width:auto;">
+                            <option value="local-model">LM Studio (Aktuell geladenes Modell)</option>
+                         </select>
+                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; padding-left: 10px;">
+                            <i>Tipp: Stelle sicher, dass in LM Studio "CORS" aktiviert ist (standardmäßig an).</i>
+                         </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-2" style="display:flex; flex-direction:column; gap:20px;">
+                    <div id="gen-controls" style="display:flex; flex-direction:column; gap:20px;"></div>
+                </div>
+
+                <div class="col-1" style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card">
+                        <div class="card-title">Generierung</div>
+                        
+                        <div style="margin-bottom: 12px;">
+                            <label for="modelSelectMain" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
+                            <select id="modelSelectMain" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                <option value="lm-studio">LM Studio (Lokal)</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="useAutoBot" style="width: auto; margin: 0;">
+                            <label for="useAutoBot" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
+                                <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary" id="optimizeAiBtn" onclick="callLocalAI()">
+                            <span class="spinner" id="aiSpinner"></span> <i class="fa-solid fa-microchip"></i> KI Prompt Generieren
+                        </button>
+                        <button class="btn btn-secondary" onclick="generateLocalJSON()">
+                            <i class="fa-solid fa-code"></i> Local Fast-Gen (Keine KI)
+                        </button>
+                        
+                        <!-- Auto Bot Console Terminal -->
+                        <div id="autoBotConsole" style="display:none; margin-top:15px; background:#0f172a; border:1px solid #1e293b; border-radius:8px; overflow:hidden;">
+                            <div style="background:#1e293b; padding:6px 10px; font-size:0.7rem; color:#94a3b8; font-family:var(--font-code); display:flex; justify-content:space-between;">
+                                <span><i class="fa-solid fa-terminal"></i> Auto-Bot Terminal</span>
+                                <span id="autoBotStatus">Idle</span>
+                            </div>
+                            <div id="autoBotLog" style="padding:10px; max-height:250px; overflow-y:auto; font-family:var(--font-code); font-size:0.75rem; color:#cbd5e1; line-height:1.5;"></div>
+                        </div>
+                    </div>
+
+                    <div class="generated-output" style="flex-grow:1; min-height: 400px;">
+                        <div class="output-header">
+                            <span style="color:#fff; font-weight:600;"><i class="fa-brands fa-js"></i> AI JSON Payload</span>
+                            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="copyResult('codeBlock', this)">COPY</button>
+                        </div>
+                        <pre style="margin:0; height: 100%;"><code id="codeBlock" class="language-json">// Wähle Parameter oder nutze "Local AI JSON Generate"...</code></pre>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-title" style="font-size:0.8rem;">Live Kontext Summary</div>
+                        <div id="rawPrompt" style="font-size:0.75rem; color:#64748b; font-family:var(--font-code);">Warte auf Input...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="char" class="tab-content">
+            <div class="header">
+                <h1>Charakter & Identität</h1>
+                <p>Konsistente Charaktere, Face-Swaps und Posen-Transfer mit Referenz-Steuerung.</p>
+            </div>
+
+            <div class="grid">
+                <div class="card col-2">
+                    <div class="card-title">🧬 Consistency Engine</div>
+                    <div class="card-subtitle">Basis für konsistente Charakter-Generierung</div>
+                    
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label>Basis Charakter</label>
+                            <input type="text" data-nano="char.desc" placeholder="z.B. young woman, red hair, blue eyes...">
+                        </div>
+                        <div>
+                            <label>Handlung</label>
+                            <input type="text" data-nano="char.action" placeholder="z.B. reading a book, drinking coffee...">
+                        </div>
+                    </div>
+
+                    <div class="slider-group" style="margin-top:10px;">
+                        <div class="slider-header">
+                            <span>Character Reference Weight (Ähnlichkeit)</span>
+                            <span class="slider-val" id="val-cw">--cw 100</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="100" data-nano="char.weight" oninput="document.getElementById('val-cw').innerText = '--cw ' + this.value">
+                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#666; margin-top:2px;">
+                            <span>Nur Gesicht (0)</span>
+                            <span>Kleidung & Style (100)</span>
+                        </div>
+                    </div>
+
+                    <label style="margin-top: 15px;">Output Modus</label>
+                    <select data-nano="char.mode">
+                        <option value="story">Story Shot (Konsistentes Gesicht)</option>
+                        <option value="pose">Pose Transfer (Körperhaltung kopieren)</option>
+                        <option value="sheet">Character Sheet (Turnaround 3 Ansichten)</option>
+                    </select>
+
+                    <div class="generated-output" style="margin-top:15px;">
+                        <div class="output-header">
+                            <span>Prompt Output</span> 
+                            <div class="style-switch">
+                                <button class="style-btn active" onclick="setPromptStyle('tech', this)">Technisch</button>
+                                <button class="style-btn" onclick="setPromptStyle('natural', this)">Natural</button>
+                            </div>
+                            <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-char', this)">COPY</button>
+                        </div>
+                        <div class="code-view" id="out-char"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🎭 Face & Expression</div>
+                    <label>Operation</label>
+                    <select data-nano="face.op">
+                        <option value="swap">Face Swap (Gesicht tauschen)</option>
+                        <option value="age">Alterungsprozess (Aging)</option>
+                        <option value="expr">Ausdruck ändern</option>
+                    </select>
+                    <label>Detail / Ziel</label>
+                    <input type="text" data-nano="face.detail" placeholder="z.B. Brad Pitt OR laughing...">
+                    
+                    <div class="generated-output" style="margin-top:15px;">
+                        <div class="output-header"><span>Face Ops</span> <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-face', this)">COPY</button></div>
+                        <div class="code-view" id="out-face"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="edit" class="tab-content">
+            <div class="header">
+                <h1>Editing & Inpainting</h1>
+                <p>Professionelle Bildbearbeitung: Objekte entfernen, hinzufügen oder ändern.</p>
+            </div>
+            <div class="grid">
+                <div class="card col-2">
+                    <div class="card-title">📦 Canvas Operations</div>
+                    <div class="card-subtitle">Definiere, was im Bild passieren soll.</div>
+
+                    <div style="display:flex; gap:15px; margin-bottom:15px;">
+                        <div class="toggle-wrapper" style="flex:1; justify-content:center;">
+                            <input type="radio" name="editScope" id="scopeInpaint" value="inpaint" checked onclick="updateNanoScope('inpaint')">
+                            <label for="scopeInpaint"><i class="fa-solid fa-paintbrush"></i> Inpaint (Mask)</label>
+                        </div>
+                        <div class="toggle-wrapper" style="flex:1; justify-content:center;">
+                            <input type="radio" name="editScope" id="scopeGlobal" value="global" onclick="updateNanoScope('global')">
+                            <label for="scopeGlobal"><i class="fa-solid fa-image"></i> Global (Img2Img)</label>
+                        </div>
+                    </div>
+
+                    <div class="grid" style="grid-template-columns: 1fr 2fr; gap:15px;">
+                        <div>
+                            <label>Aktion</label>
+                            <select data-nano="obj.action">
+                                <option value="add">Hinzufügen (Insert)</option>
+                                <option value="remove">Entfernen (Remove)</option>
+                                <option value="replace">Ersetzen (Swap)</option>
+                                <option value="alter">Stil ändern (Alter)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Prompt (Was soll entstehen?)</label>
+                            <input type="text" data-nano="obj.what" placeholder="z.B. vintage red lamp, cybernetic arm...">
+                        </div>
+                    </div>
+
+                    <div class="slider-group" style="margin-top:15px;">
+                        <div class="slider-header">
+                            <span>Denoising Strength (Änderungsstärke)</span>
+                            <span class="slider-val" id="val-denoise">0.75</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="75" data-nano="obj.strength" oninput="document.getElementById('val-denoise').innerText = (this.value / 100).toFixed(2)">
+                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:#666; margin-top:2px;">
+                            <span>Subtil (0.1)</span>
+                            <span>Kreativ (0.6)</span>
+                            <span>Komplett neu (1.0)</span>
+                        </div>
+                    </div>
+
+                    <label style="margin-top:10px;">Licht-Physik & Integration</label>
+                    <select data-nano="obj.physics">
+                        <option value="standard">Standard Integration</option>
+                        <option value="advanced">Hard Shadows & Reflection (Realistic)</option>
+                        <option value="soft">Soft Blend (Feathered Edge)</option>
+                    </select>
+
+                    <div class="generated-output" style="margin-top:15px;">
+                         <div class="output-header">
+                             <span>Smart Edit Prompt</span> 
+                             <div class="style-switch">
+                                <button class="style-btn active" onclick="setPromptStyle('tech', this)">Technisch</button>
+                                <button class="style-btn" onclick="setPromptStyle('natural', this)">Natural</button>
+                            </div>
+                             <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-obj', this)">COPY</button>
+                        </div>
+                        <div class="code-view" id="out-obj"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🖼️ Background Studio</div>
+                    <label>Modus</label>
+                    <select data-nano="bg.mode">
+                        <option value="remove">Entfernen (Alpha)</option>
+                        <option value="change">Tauschen (New BG)</option>
+                        <option value="zoom">Outpainting (Zoom)</option>
+                    </select>
+                    <label>Umgebung</label>
+                    <textarea data-nano="bg.prompt" placeholder="Beschreibe die Umgebung..." style="height:60px;"></textarea>
+                    
+                    <div class="generated-output" style="margin-top:15px;">
+                        <div class="output-header"><span>BG Prompt</span> <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-bg', this)">COPY</button></div>
+                        <div class="code-view" id="out-bg"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">✨ Restaurierung</div>
+                    <label>Modus</label>
+                    <select id="res-mode" onchange="updateRes()">
+                        <option value="restore">Altes Foto retten (Kratzer weg)</option>
+                        <option value="colorize">Colorieren (Schwarz-Weiß zu Farbe)</option>
+                        <option value="upscale">Upscale Details (4k Texturen)</option>
+                    </select>
+                    <div class="generated-output" style="margin-top:15px;">
+                        <div class="output-header"><span>Restoration Prompt</span> <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-res', this)">COPY</button></div>
+                        <div class="code-view" id="out-res">...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="cinema" class="tab-content">
+            <div class="header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom: 25px;">
+                <div>
+                    <h1>Cinematic Style & Edit</h1>
+                    <p>Virtuelles Kamera-Rig und Video-Prompting.</p>
+                </div>
+                <div style="display: flex; gap: 5px; background: rgba(30, 38, 64, 0.4); padding: 5px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <button class="btn btn-secondary active-sub-tab" id="subTabCineBtn" onclick="switchCineSub('cine-rig')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: var(--primary);">🎥 Virtual Rig</button>
+                    <button class="btn btn-secondary" id="subTabVeoBtn" onclick="switchCineSub('veo-studio')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: transparent;">🎬 Veo 3.1 Studio</button>
+                    <button class="btn btn-secondary" id="subTabCamDirBtn" onclick="switchCineSub('camera-director')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: transparent;">🧭 AI Camera Director</button>
+                </div>
+            </div>
+            
+            <div id="cineRigContent" class="grid">
+                <div class="card col-3">
+                    <div class="card-title">🎥 Virtual Rig</div>
+                    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                        <div>
+                            <label>Kamera</label>
+                            <select data-nano="cine.cam">
+                                <option value="alexa">ARRI Alexa 35</option>
+                                <option value="panavision">Panavision DXL2</option>
+                                <option value="venice">Sony Venice</option>
+                                <option value="imax">IMAX 70mm</option>
+                                <option value="vhs">VHS Analog</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Linse</label>
+                            <select data-nano="cine.lens">
+                                <option value="arri_sig">ARRI Signature</option>
+                                <option value="cooke">Cooke S4 (Warm)</option>
+                                <option value="canon_k35">Canon K35 (Vintage)</option>
+                                <option value="pana_c">Anamorphic C-Series</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Focal Length</label>
+                            <select data-nano="cine.focal">
+                                <option value="14mm">14mm (Ultra Wide)</option>
+                                <option value="24mm">24mm (Wide)</option>
+                                <option value="35mm">35mm (Street)</option>
+                                <option value="50mm">50mm (Standard)</option>
+                                <option value="85mm">85mm (Portrait)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Blende</label>
+                            <select data-nano="cine.aperture">
+                                <option value="f1.4">f/1.4 (Blur)</option>
+                                <option value="f2.8">f/2.8 (Cinema)</option>
+                                <option value="f8">f/8 (Deep)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card col-2">
+                    <div class="card-title">🎬 Szene & Framing</div>
+                    <label>Motiv Beschreibung</label>
+                    <textarea data-nano="cine.scene" placeholder="Was ist auf dem Bild zu sehen?"></textarea>
+                    
+                    <label style="margin-top:10px;">Shot Type (Chips)</label>
+                    
+                    <div class="col-3" style="grid-column: span 3; margin-top: 15px;">
+                        
+                        <div id="selection-info" class="info-panel">
+                            <div id="info-title" class="info-title"></div>
+                            <div id="info-desc" class="info-desc"></div>
+                            <div id="info-example" class="info-example"></div>
+                        </div>
+
+                        <div id="chip-container" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Output Config</div>
+                    
+                    <label>Generierungs-Modus</label>
+                    <div style="display:flex; gap:15px; margin-bottom:15px;">
+                        <div class="toggle-wrapper" style="flex:1; justify-content:center; margin:0; padding:10px;">
+                            <input type="radio" name="cineGenMode" id="cineModeNew" checked onclick="updateCineMode('new')">
+                            <label for="cineModeNew"><i class="fa-solid fa-wand-magic-sparkles"></i> Neu generiert</label>
+                        </div>
+                        <div class="toggle-wrapper" style="flex:1; justify-content:center; margin:0; padding:10px;">
+                            <input type="radio" name="cineGenMode" id="cineModeEdit" onclick="updateCineMode('edit')">
+                            <label for="cineModeEdit"><i class="fa-solid fa-pen-to-square"></i> Bild ändern</label>
+                        </div>
+                    </div>
+
+                    <label>Target Engine</label>
+                    <select data-nano="cine.engine">
+                        <option value="dalle">DALL-E 3 / GPT</option>
+                        <option value="mj_remix">Midjourney</option>
+                        <option value="sd_img2img">Stable Diffusion</option>
+                        <option value="firefly">Adobe Firefly</option>
+                    </select>
+                    <label>Aspect Ratio</label>
+                    <select data-nano="cine.ratio">
+                        <option value="--ar 16:9">16:9 Cinema</option>
+                        <option value="--ar 2.39:1">2.39:1 Anamorphic</option>
+                        <option value="--ar 9:16">9:16 Mobile</option>
+                        <option value="--ar 1:1">1:1 Square</option>
+                    </select>
+
+                    <div style="margin-top: 15px; margin-bottom: 12px;">
+                        <label for="modelSelectCine" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
+                        <select id="modelSelectCine" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                            <option value="lm-studio">LM Studio (Lokal)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="useAutoBotCine" style="width: auto; margin: 0;">
+                        <label for="useAutoBotCine" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
+                            <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                        </label>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="updateNanoPrompts()">
+                            <i class="fa-solid fa-rotate"></i> Aktualisieren
+                        </button>
+                        <button class="btn btn-magic" style="flex:1;" id="optimizeCineBtn" onclick="optimizeCinePrompt()">
+                            <span class="spinner" id="cineSpinner"></span> <i class="fa-solid fa-microchip"></i> KI Prompt Generieren
+                        </button>
+                    </div>
+
+                    <!-- Auto Bot Console Terminal for Cinema Edit -->
+                    <div id="autoBotConsoleCine" style="display:none; margin-top:15px; background:#0f172a; border:1px solid #1e293b; border-radius:8px; overflow:hidden;">
+                        <div style="background:#1e293b; padding:6px 10px; font-size:0.7rem; color:#94a3b8; font-family:var(--font-code); display:flex; justify-content:space-between;">
+                            <span><i class="fa-solid fa-terminal"></i> Auto-Bot Terminal (Cinema)</span>
+                            <span id="autoBotStatusCine">Idle</span>
+                        </div>
+                        <div id="autoBotLogCine" style="padding:10px; max-height:250px; overflow-y:auto; font-family:var(--font-code); font-size:0.75rem; color:#cbd5e1; line-height:1.5;"></div>
+                    </div>
+
+                    <div class="generated-output" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;">
+                        <div style="border-bottom:1px solid #333; padding-bottom:10px;">
+                            <div class="output-header" style="background:transparent; padding:0 0 5px 0;"><span>A) Technik / Ops</span></div>
+                            <div class="code-view" id="out-cine-tech" style="font-size:0.85rem; color:#f1f5f9; white-space: pre-wrap;"></div>
+                        </div>
+                        
+                        <div style="border-bottom:1px solid #333; padding-bottom:10px;">
+                            <div class="output-header" style="background:transparent; padding:0 0 5px 0;"><span>B) Scene Context</span></div>
+                            <div class="code-view" id="out-cine-scene" style="font-size:0.85rem; color:#f1f5f9;"></div>
+                        </div>
+
+                        <div>
+                            <div class="output-header">
+                                <span>C) AI Optimized JSON</span>
+                                <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-cine-final', this)">COPY</button>
+                            </div>
+                            <pre id="out-cine-final" class="code-view" style="margin:0; color:#f1f5f9; min-height: 200px; font-family: var(--font-code);"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VEO STUDIO CONTENT -->
+            <div id="veoStudioContent" class="grid" style="display: none; align-items: stretch;">
+                <div class="card col-3">
+                    <div class="card-title">🎬 Veo 3.1 Pro Studio</div>
+                    <div class="subtitle" style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-top:-8px; margin-bottom:20px;">High-End Video Prompting</div>
+
+                    <label>Subjekt (Wer oder was?)</label>
+                    <input type="text" id="veo_subject" placeholder="z.B. Ein Astronaut mit spiegelndem Visier" style="margin-bottom:12px;">
+
+                    <label>Aktion & Geschwindigkeit (Was passiert?)</label>
+                    <input type="text" id="veo_action" placeholder="z.B. schwebt schwerelos, greift nach einem leuchtenden Stein" style="margin-bottom:12px;">
+
+                    <label>Umwelt-Interaktion (FX, Partikel, Wetter)</label>
+                    <input type="text" id="veo_fx" placeholder="z.B. schwebende Staubpartikel, kleine Blitze" style="margin-bottom:12px;">
+
+                    <label>Setting & Licht (Wo und wie beleuchtet?)</label>
+                    <input type="text" id="veo_setting" placeholder="z.B. Im Inneren eines Raumschiffs, hartes rotes Notlicht" style="margin-bottom:12px;">
+
+                    <label>Kamera / Linse (Perspektive)</label>
+                    <input type="text" id="veo_camera" placeholder="z.B. Close-up auf das Gesicht, langsame Drehung" style="margin-bottom:12px;">
+
+                    <label>Audio / Sound Design (Natürlicher Ton)</label>
+                    <input type="text" id="veo_sound" placeholder="z.B. Schweres Atmen, dumpfes Maschinenbrummen" style="margin-bottom:12px;">
+
+                    <label>Ästhetik & Stil (Look)</label>
+                    <select id="veo_style" style="margin-bottom:12px;">
+                        <option value="photorealistic, 8k, cinematic lighting, highly detailed">Fotorealistisch / Cineastisch</option>
+                        <option value="cyberpunk aesthetic, neon lighting, dark synthwave vibe">Cyberpunk / Neon Sci-Fi</option>
+                        <option value="vintage 35mm film, grainy, cinematic halation, nostalgic">Vintage Film (35mm Kino-Look)</option>
+                        <option value="1990s VHS camcorder footage, tracking lines, low fidelity">Retro VHS Camcorder</option>
+                        <option value="studio ghibli inspired, vibrant colors, beautiful anime aesthetic">Anime / Studio Ghibli Style</option>
+                        <option value="dark fantasy, gothic atmosphere, moody lighting, volumetric fog">Dark Fantasy / Gothic</option>
+                        <option value="macro photography, extreme close up, shallow depth of field, sharp focus">Makro-Aufnahme (Extrem Nah)</option>
+                        <option value="claymation style, stop motion animation texture, tactile, miniature">Stop-Motion / Knetgummi</option>
+                        <option value="watercolor painting style, brush strokes, artistic, expressive">Aquarell / Gemalt</option>
+                    </select>
+
+                    <div style="margin-top: 15px; margin-bottom: 12px;">
+                        <label for="modelSelectVeo" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
+                        <select id="modelSelectVeo" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                            <option value="lm-studio">LM Studio (Lokal)</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="useAutoBotVeo" style="width: auto; margin: 0;">
+                        <label for="useAutoBotVeo" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
+                            <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary" id="veoAiBtn" onclick="generateVeoPrompt()" style="margin-top:15px; width:100%;">
+                        <span class="spinner" id="veoSpinner"></span> ✨ Cinematic Masterpiece erstellen
+                    </button>
+
+                    <!-- Auto Bot Console Terminal for Veo -->
+                    <div id="autoBotConsoleVeo" style="display:none; margin-top:15px; background:#0f172a; border:1px solid #1e293b; border-radius:8px; overflow:hidden;">
+                        <div style="background:#1e293b; padding:6px 10px; font-size:0.7rem; color:#94a3b8; font-family:var(--font-code); display:flex; justify-content:space-between;">
+                            <span><i class="fa-solid fa-terminal"></i> Auto-Bot Terminal (Veo)</span>
+                            <span id="autoBotStatusVeo">Idle</span>
+                        </div>
+                        <div id="autoBotLogVeo" style="padding:10px; max-height:200px; overflow-y:auto; font-family:var(--font-code); font-size:0.75rem; color:#cbd5e1; line-height:1.5;"></div>
+                    </div>
+
+                    <div id="veo-output-container" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-left: 4px solid var(--primary); border-radius: 4px; display: none;">
+                        <strong style="color:var(--text-main); font-size:0.85rem;">Dein Veo 3.1 Prompt:</strong>
+                        <pre id="veoFinalPrompt" style="font-family:var(--font-code); color:var(--primary); font-size:0.9rem; line-height:1.4; white-space:pre-wrap; margin-top:8px;"></pre>
+                        <button class="btn btn-secondary" style="margin-top:12px; padding:6px 12px; font-size:0.8rem;" onclick="copyVeoToClipboard()">Kopieren 📋</button>
+                    </div>
+                </div>
+
+                <!-- KI Regie-Assistent / Copilot -->
+                <div class="card col-2" style="display: flex; flex-direction: column;">
+                    <div class="card-title" style="color:var(--success);"><i class="fa-solid fa-robot"></i> Copilot & Mentor</div>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:-8px; margin-bottom:15px;">Keine Idee? Schreib einfach "Hilf mir bei einem Video über..."</p>
+                    
+                    <div id="veoChatBox" style="flex-grow:1; min-height:350px; max-height:550px; overflow-y:auto; background:rgba(0,0,0,0.2); border-radius:8px; padding:15px; border:1px solid var(--border-color); display:flex; flex-direction:column; gap:12px; margin-bottom:12px;">
+                        <div style="padding:10px 14px; border-radius:8px; line-height:1.4; max-width:90%; background:var(--bg-input); border:1px solid var(--border-color); align-self:flex-start; color:var(--text-main);">
+                            Hallo Regisseur! 🎬<br><br>Ich sehe mir deine Felder links an. Wenn du feststeckst, sag mir einfach ein Stichwort (z.B. <em>"Ritter"</em>) und ich fülle dir gedanklich alle Felder mit einer genialen Idee aus!
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="veoAdvInput" placeholder="Deine Frage oder Idee..." onkeypress="if(event.key==='Enter') askVeoAdv()" style="margin:0;">
+                        <button class="btn btn-primary" id="veoAdvBtn" onclick="askVeoAdv()" style="padding:0 20px; background:var(--success); border-color:var(--success);">Senden</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI CAMERA DIRECTOR CONTENT -->
+            <style id="camera-director-styles">
+                /* 3D Camera Animations */
+                .camera-preview {
+                    width: 100%;
+                    height: 100px;
+                    background: #080b14;
+                    border-radius: 6px;
+                    overflow: hidden;
+                    position: relative;
+                    margin-bottom: 15px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    perspective: 400px;
+                    border: 1px solid var(--border-color);
+                }
+                .camera-preview::after {
+                    content: '';
+                    position: absolute;
+                    inset: 0;
+                    box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                .camera-preview .scene {
+                    width: 200%;
+                    height: 200%;
+                    background: 
+                        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+                    background-size: 20px 20px;
+                    position: absolute;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transform-style: preserve-3d;
+                }
+                .camera-preview .subject {
+                    width: 24px;
+                    height: 24px;
+                    background: var(--primary);
+                    border-radius: 4px;
+                    box-shadow: 0 0 15px var(--primary-glow);
+                    position: relative;
+                }
+                .camera-preview .subject::after {
+                    content: '';
+                    position: absolute;
+                    top: 50%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 10px; height: 10px;
+                    border-radius: 50%;
+                    background: rgba(255,255,255,0.9);
+                }
+                
+                /* Pan & Tilt */
+                [data-anim="pan-right"] .scene { animation: panRight 3s infinite alternate ease-in-out; }
+                @keyframes panRight { 0% { transform: translateX(30px); } 100% { transform: translateX(-30px); } }
+                [data-anim="pan-left"] .scene { animation: panLeft 3s infinite alternate ease-in-out; }
+                @keyframes panLeft { 0% { transform: translateX(-30px); } 100% { transform: translateX(30px); } }
+                [data-anim="tilt-up"] .scene { animation: tiltUp 3s infinite alternate ease-in-out; }
+                @keyframes tiltUp { 0% { transform: translateY(30px); } 100% { transform: translateY(-30px); } }
+                [data-anim="tilt-down"] .scene { animation: tiltDown 3s infinite alternate ease-in-out; }
+                @keyframes tiltDown { 0% { transform: translateY(-30px); } 100% { transform: translateY(30px); } }
+                [data-anim="whip-pan-right"] .scene { animation: whipRight 2s infinite cubic-bezier(0.8, 0, 0.2, 1); }
+                @keyframes whipRight { 0%, 20% { transform: translateX(40px); filter: blur(0); } 40%, 60% { transform: translateX(-40px); filter: blur(4px); } 80%, 100% { transform: translateX(-40px); filter: blur(0); } }
+                [data-anim="whip-pan-left"] .scene { animation: whipLeft 2s infinite cubic-bezier(0.8, 0, 0.2, 1); }
+                @keyframes whipLeft { 0%, 20% { transform: translateX(-40px); filter: blur(0); } 40%, 60% { transform: translateX(40px); filter: blur(4px); } 80%, 100% { transform: translateX(40px); filter: blur(0); } }
+
+                /* Zoom */
+                [data-anim="zoom-in-slow"] .scene { animation: zoomIn 4s infinite alternate ease-in-out; }
+                [data-anim="zoom-in-fast"] .scene { animation: zoomIn 1.5s infinite alternate ease-in-out; }
+                [data-anim="crash-in"] .scene { animation: zoomIn 1s infinite alternate cubic-bezier(0.8,0,0.2,1); }
+                @keyframes zoomIn { 0% { transform: scale(1); } 100% { transform: scale(1.8); } }
+                
+                [data-anim="zoom-out-slow"] .scene { animation: zoomOut 4s infinite alternate ease-in-out; }
+                [data-anim="zoom-out-fast"] .scene { animation: zoomOut 1.5s infinite alternate ease-in-out; }
+                [data-anim="crash-out"] .scene { animation: zoomOut 1s infinite alternate cubic-bezier(0.8,0,0.2,1); }
+                @keyframes zoomOut { 0% { transform: scale(1.8); } 100% { transform: scale(1); } }
+
+                /* Dolly & Track */
+                [data-anim="dolly-in"] .scene { animation: dollyIn 3s infinite alternate ease-in-out; }
+                @keyframes dollyIn { 0% { transform: translateZ(-80px) scale(0.8); } 100% { transform: translateZ(80px) scale(1.4); } }
+                [data-anim="dolly-out"] .scene { animation: dollyOut 3s infinite alternate ease-in-out; }
+                @keyframes dollyOut { 0% { transform: translateZ(80px) scale(1.4); } 100% { transform: translateZ(-80px) scale(0.8); } }
+                
+                [data-anim="tracking"] .subject { animation: trackingSub 3s infinite linear; }
+                [data-anim="tracking"] .scene { animation: trackingScene 3s infinite linear; }
+                @keyframes trackingSub { 0% { transform: translateX(-40px); } 100% { transform: translateX(40px); } }
+                @keyframes trackingScene { 0% { transform: translateX(10px); } 100% { transform: translateX(-10px); } }
+                
+                [data-anim="follow"] .subject { animation: followSub 3s infinite ease-in-out; }
+                [data-anim="follow"] .scene { animation: followScene 3s infinite linear; }
+                @keyframes followSub { 0%, 100% { transform: translateY(0) scale(1.2); } 50% { transform: translateY(-5px) scale(1.2); } }
+                @keyframes followScene { 0% { transform: translateY(-30px); } 100% { transform: translateY(30px); } }
+                
+                [data-anim="reverse-track"] .subject { animation: revTrackSub 3s infinite ease-in-out; }
+                [data-anim="reverse-track"] .scene { animation: revTrackScene 3s infinite linear; }
+                @keyframes revTrackSub { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(5px) scale(1.1); } }
+                @keyframes revTrackScene { 0% { transform: translateY(30px) scale(1.2); } 100% { transform: translateY(-30px) scale(0.8); } }
+
+                [data-anim="side-track"] .scene, [data-anim="vehicle-track"] .scene { animation: sideTrack 2s infinite linear; }
+                @keyframes sideTrack { 0% { transform: translateX(40px); } 100% { transform: translateX(-40px); } }
+                
+                [data-anim="low-track"] .scene { animation: lowTrack 2s infinite linear; transform-origin: bottom center; }
+                @keyframes lowTrack { 0% { transform: rotateX(60deg) translateY(40px); } 100% { transform: rotateX(60deg) translateY(-40px); } }
+                
+                [data-anim="chase"] .scene { animation: chase 1.5s infinite ease-in; }
+                @keyframes chase { 0% { transform: translateZ(-100px) scale(0.5); } 100% { transform: translateZ(50px) scale(1.5); } }
+
+                /* Physical Moves */
+                [data-anim="truck-right"] .scene { animation: truckRight 3s infinite alternate ease-in-out; }
+                @keyframes truckRight { 0% { transform: translateX(40px); } 100% { transform: translateX(-40px); } }
+                [data-anim="truck-left"] .scene { animation: truckLeft 3s infinite alternate ease-in-out; }
+                @keyframes truckLeft { 0% { transform: translateX(-40px); } 100% { transform: translateX(40px); } }
+                [data-anim="pedestal-up"] .scene { animation: pedUp 3s infinite alternate ease-in-out; }
+                @keyframes pedUp { 0% { transform: translateY(30px); } 100% { transform: translateY(-30px); } }
+                [data-anim="pedestal-down"] .scene { animation: pedDown 3s infinite alternate ease-in-out; }
+                @keyframes pedDown { 0% { transform: translateY(-30px); } 100% { transform: translateY(30px); } }
+                [data-anim="slider-right"] .scene { animation: slideRight 4s infinite alternate ease-in-out; }
+                @keyframes slideRight { 0% { transform: translateX(20px); } 100% { transform: translateX(-20px); } }
+                [data-anim="slider-left"] .scene { animation: slideLeft 4s infinite alternate ease-in-out; }
+                @keyframes slideLeft { 0% { transform: translateX(-20px); } 100% { transform: translateX(20px); } }
+                
+                [data-anim="push-past"] .scene { animation: pushPast 3s infinite ease-in; }
+                @keyframes pushPast { 0% { transform: scale(0.5); } 100% { transform: scale(3); opacity: 0; } }
+
+                [data-anim="arc-right"] .scene { animation: arcRight 4s infinite alternate ease-in-out; }
+                @keyframes arcRight { 0% { transform: rotateY(-30deg) translateX(20px); } 100% { transform: rotateY(30deg) translateX(-20px); } }
+                [data-anim="arc-left"] .scene { animation: arcLeft 4s infinite alternate ease-in-out; }
+                @keyframes arcLeft { 0% { transform: rotateY(30deg) translateX(-20px); } 100% { transform: rotateY(-30deg) translateX(20px); } }
+                
+                [data-anim="orbit-cw"] .scene { animation: orbitCW 6s infinite linear; }
+                @keyframes orbitCW { 0% { transform: rotateZ(0deg); } 100% { transform: rotateZ(360deg); } }
+                [data-anim="orbit-ccw"] .scene { animation: orbitCCW 6s infinite linear; }
+                @keyframes orbitCCW { 0% { transform: rotateZ(360deg); } 100% { transform: rotateZ(0deg); } }
+
+                /* Human Camera */
+                [data-anim="handheld"] .scene { animation: handheld 2s infinite ease-in-out; }
+                @keyframes handheld { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(2px, -2px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 75% { transform: translate(-3px, -1px) rotate(0deg); } 100% { transform: translate(0, 0) rotate(0deg); } }
+                [data-anim="snorricam"] .subject { animation: snorriSub 2s infinite ease-in-out; }
+                [data-anim="snorricam"] .scene { animation: snorriScene 2s infinite ease-in-out; }
+                @keyframes snorriSub { 0%, 100% { transform: translate(0, 0) scale(1.5); } 50% { transform: translate(0, 0) scale(1.5); } }
+                @keyframes snorriScene { 0% { transform: translate(10px, 10px) rotate(2deg); } 25% { transform: translate(-10px, -5px) rotate(-2deg); } 50% { transform: translate(5px, -10px) rotate(1deg); } 75% { transform: translate(-5px, 10px) rotate(-1deg); } 100% { transform: translate(10px, 10px) rotate(2deg); } }
+
+                /* Drone / Crane */
+                [data-anim="crane-up"] .scene { animation: craneUp 4s infinite alternate ease-in-out; }
+                @keyframes craneUp { 0% { transform: translateY(40px) scale(1.2); } 100% { transform: translateY(-40px) scale(0.8); } }
+                [data-anim="crane-down"] .scene { animation: craneDown 4s infinite alternate ease-in-out; }
+                @keyframes craneDown { 0% { transform: translateY(-40px) scale(0.8); } 100% { transform: translateY(40px) scale(1.2); } }
+                [data-anim="drone-push"] .scene { animation: dronePush 4s infinite ease-in-out; }
+                @keyframes dronePush { 0% { transform: translateY(-20px) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(40px) scale(2); opacity: 0; } }
+                [data-anim="drone-pull"] .scene { animation: dronePull 4s infinite ease-in-out; }
+                @keyframes dronePull { 0% { transform: translateY(40px) scale(2); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-20px) scale(0.5); opacity: 0; } }
+                [data-anim="helicopter"] .scene { animation: helicopter 5s infinite linear; }
+                @keyframes helicopter { 0% { transform: translateY(20px) translateX(40px) scale(0.6); } 100% { transform: translateY(20px) translateX(-40px) scale(0.6); } }
+
+                /* Specials */
+                [data-anim="fpv"] .scene { animation: fpv 3s infinite linear; }
+                @keyframes fpv { 0% { transform: scale(1) translateY(0); } 50% { transform: scale(1.2) translateY(5px); } 100% { transform: scale(1.4) translateY(0); opacity:0;} }
+                [data-anim="tilt-shift"] .scene { filter: blur(3px); animation: tiltShift 4s infinite alternate ease-in-out; }
+                [data-anim="tilt-shift"] .subject { filter: blur(0); box-shadow: 0 0 0 100px rgba(0,0,0,0.1); }
+                @keyframes tiltShift { 0% { transform: rotateX(45deg) scale(0.8); } 100% { transform: rotateX(55deg) scale(0.9); } }
+                [data-anim="infinite-zoom"] .scene { animation: infZoom 2s infinite linear; }
+                @keyframes infZoom { 0% { transform: scale(1); } 100% { transform: scale(3); } }
+                [data-anim="earth-zoom"] .scene { animation: earthZoom 4s infinite ease-out; }
+                @keyframes earthZoom { 0% { transform: scale(3); opacity: 1; } 80% { opacity: 1; } 100% { transform: scale(0.1); opacity: 0; } }
+                [data-anim="timelapse"] .subject { animation: timelapseSub 1s infinite alternate step-end; }
+                [data-anim="timelapse"] .scene { animation: timelapseScene 0.5s infinite alternate linear; }
+                @keyframes timelapseSub { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+                @keyframes timelapseScene { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(30deg); } }
+                [data-anim="pass-through"] .scene { animation: passThrough 3s infinite ease-in; }
+                [data-anim="pass-through"] .subject { animation: passThroughSub 3s infinite ease-in; width: 60px; height: 60px; background: transparent; border: 4px solid var(--primary); }
+                @keyframes passThrough { 0% { transform: scale(0.5); } 100% { transform: scale(4); opacity: 0; } }
+                @keyframes passThroughSub { 0% { transform: scale(0.5); } 100% { transform: scale(4); opacity: 0; } }
+            </style>
+            <div id="cameraDirectorContent" style="display: none; align-items: stretch; gap: 20px; flex-wrap: nowrap;">
+                <div class="card col-1" style="display:flex; flex-direction:column; min-width: 250px; width: 250px; flex-shrink: 0;">
+                    <div class="card-title"><i class="fa-solid fa-list"></i> Kategorien</div>
+                    <ul id="category-list" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px;">
+                    </ul>
+                    
+                    <div style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid var(--border-color);">
+                        <h4 style="margin:0 0 5px 0; font-size:0.85rem; color:var(--text-main);">💡 Tipp</h4>
+                        <p style="margin:0; font-size:0.75rem; color:var(--text-muted);">Klicke auf eine Karte, um die Bewegung im Editor anzupassen oder direkt zu kopieren.</p>
+                    </div>
+                </div>
+                
+                <div class="card col-2" style="display:flex; flex-direction:column; flex-grow: 1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <h2 id="current-category-title" style="margin:0; font-size:1.2rem;">Alle Kamerafahrten</h2>
+                            <p id="current-category-desc" style="font-size:0.8rem; color:var(--text-muted); margin:4px 0 0 0;">Wähle eine Kamerabewegung aus, um sie zu konfigurieren.</p>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; background:var(--bg-input); padding:4px 10px; border-radius:6px; border:1px solid var(--border-color);">
+                            <i class="fa-solid fa-search" style="color:var(--text-muted);"></i>
+                            <input type="text" id="search-input" placeholder="Suchen..." style="padding:4px; font-size:0.8rem; border:none; background:transparent; outline:none; color:var(--text-main); width:150px;">
+                            <i class="fa-solid fa-xmark" id="clear-search" style="display:none; cursor:pointer; color:var(--text-muted);"></i>
+                            <span id="active-count" style="font-size:0.75rem; color:var(--primary); font-weight:bold; margin-left:10px;">0 Prompts</span>
+                        </div>
+                    </div>
+                    
+                    <div id="prompt-grid" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; max-height: 450px; overflow-y:auto; padding-right:5px; margin-bottom:20px; align-content: start;">
+                    </div>
+                    
+                    <div style="border-top:1px solid var(--border-color); padding-top:20px; margin-top:auto;">
+                        <div class="card-title" style="margin-bottom:15px; font-size:1.1rem; color:var(--primary);"><i class="fa-solid fa-wand-magic-sparkles"></i> Prompt-Konfigurator</div>
+                        
+                        <label style="font-size:0.8rem; margin-bottom:5px; display:block; color:var(--text-muted);">1. Szenen-Beschreibung / Subject</label>
+                        <textarea id="builder-subject" placeholder="z. B. Ein roter Sportwagen rast durch eine futuristische Cyberpunk-Stadt bei Nacht, Neonlichter spiegeln sich auf dem nassen Asphalt..." rows="2" style="margin-bottom:10px; font-size:0.85rem; width:100%;"></textarea>
+                        
+                        <div style="display:flex; gap:5px; margin-bottom:20px; flex-wrap:wrap;">
+                            <span style="font-size:0.7rem; padding:4px 8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); border-radius:4px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="setSubject('A futuristic cyberpunk city at night with neon lights')">Cyberpunk City</span>
+                            <span style="font-size:0.7rem; padding:4px 8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); border-radius:4px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="setSubject('A close-up shot of a majestic lion roaring in the savanna')">Löwe Savanne</span>
+                            <span style="font-size:0.7rem; padding:4px 8px; background:rgba(255,255,255,0.05); border:1px solid var(--border-color); border-radius:4px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'" onclick="setSubject('An astronaut walking slowly on the dusty surface of Mars')">Astronaut auf Mars</span>
+                        </div>
+                        
+                        <label style="font-size:0.8rem; margin-bottom:5px; display:block; color:var(--text-muted);">2. Ausgewählte Kamerabewegung</label>
+                        <div id="selected-movement-card" style="padding:12px; background:rgba(0,0,0,0.3); border:1px solid var(--primary); border-radius:6px; margin-bottom:20px; font-size:0.85rem; color:var(--text-muted);">
+                            Keine Kamerabewegung ausgewählt. Wähle eine aus der Liste.
+                        </div>
+                        
+                        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                            <div>
+                                <label style="font-size:0.8rem; margin-bottom:5px; display:block; color:var(--text-muted);">Bildformat / Aspect Ratio</label>
+                                <div style="display:flex; gap:5px;" id="aspect-ratio-selector">
+                                    <button class="btn btn-secondary ratio-btn active" data-ratio="--ar 16:9" style="padding:4px 10px; font-size:0.75rem;">16:9</button>
+                                    <button class="btn btn-secondary ratio-btn" data-ratio="--ar 9:16" style="padding:4px 10px; font-size:0.75rem;">9:16</button>
+                                    <button class="btn btn-secondary ratio-btn" data-ratio="--ar 1:1" style="padding:4px 10px; font-size:0.75rem;">1:1</button>
+                                    <button class="btn btn-secondary ratio-btn" data-ratio="" style="padding:4px 10px; font-size:0.75rem;">Keins</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size:0.8rem; margin-bottom:5px; display:block; color:var(--text-muted);">Stil / Kamera-Look</label>
+                                <select id="builder-style" style="width:100%; padding:6px; font-size:0.8rem;">
+                                    <option value="">Kein spezifischer Look</option>
+                                    <option value="cinematic lighting, photorealistic, 8k resolution">Cinematic Photorealistic</option>
+                                    <option value="documentary style, raw footage, grain">Documentary Raw</option>
+                                    <option value="cyberpunk aesthetic, high contrast, vivid color">Cyberpunk Vivid</option>
+                                    <option value="dreamy atmosphere, soft focus, cinematic anamorphic lens">Dreamy Anamorphic</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <label style="font-size:0.8rem; margin-bottom:5px; display:block; color:var(--text-muted);">3. Fertiger Prompt (Kopierbereit)</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <textarea id="builder-output" placeholder="Dein konfigurierter Prompt erscheint hier..." style="flex:1; height:80px; margin:0; font-family:var(--font-code); color:var(--text-main); font-size:0.85rem; border-color:var(--primary);"></textarea>
+                            <button class="btn btn-primary" id="btn-copy-builder" disabled style="padding:10px 20px; height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px;">
+                                <i class="fa-solid fa-copy" style="font-size:1.2rem;"></i> Kopieren
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 15px; padding: 12px; background: rgba(30, 38, 64, 0.4); border-radius: 8px; border: 1px dashed var(--primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <label style="font-size:0.8rem; display:block; color:var(--text-main); margin-bottom:2px;"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--primary);"></i> Video-KI Optimierung (Auto-Bot)</label>
+                                <span style="font-size:0.7rem; color:var(--text-muted);">Lässt die KI nochmal drüberschauen und den Video-Prompt perfektionieren.</span>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <select id="camDirAutoBotModel" style="padding:6px; border-radius:6px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); font-size:0.8rem;">
+                                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                    <option value="lm-studio">LM Studio (Lokal)</option>
+                                </select>
+                                <button class="btn btn-primary" id="btnCamDirAutoBot" onclick="window.runCamDirAutoBot()" style="padding:6px 15px; font-size:0.8rem; font-weight:bold;">
+                                    ⚡ Optimiere Prompt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
