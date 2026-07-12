@@ -269,6 +269,19 @@
                         </div>
                     </div>
 
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px; border: 1px solid var(--border-color);">
+                        <label>Schnellauswahl / Beispiel-Prompts</label>
+                        <select id="editPresetSelector" onchange="applyEditPreset()">
+                            <option value="">-- Wähle ein Beispiel --</option>
+                            <option value="kleidung">Kleidung ändern</option>
+                            <option value="add_obj">Objekte hinzufügen</option>
+                            <option value="change_obj">Objekte verändern</option>
+                            <option value="remove_obj">Objekte entfernen</option>
+                            <option value="style">Stilwechsel (Anime, Comic, etc.)</option>
+                        </select>
+                        <p id="editPresetDesc" style="font-size: 0.8rem; color: #aaa; margin-top: 8px; min-height: 1.2em;"></p>
+                    </div>
+
                     <div class="slider-group" style="margin-top:15px;">
                         <div class="slider-header">
                             <span>Denoising Strength (Änderungsstärke)</span>
@@ -282,12 +295,39 @@
                         </div>
                     </div>
 
-                    <label style="margin-top:10px;">Licht-Physik & Integration</label>
-                    <select data-nano="obj.physics">
-                        <option value="standard">Standard Integration</option>
-                        <option value="advanced">Hard Shadows & Reflection (Realistic)</option>
-                        <option value="soft">Soft Blend (Feathered Edge)</option>
-                    </select>
+                    <div style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <div style="margin-bottom: 12px;">
+                            <label for="modelSelectEdit" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">KI Modell wählen</label>
+                            <select id="modelSelectEdit" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                <option value="lm-studio">LM Studio (Lokal)</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="useAutoBotEdit" style="width: auto; margin: 0;">
+                            <label for="useAutoBotEdit" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
+                                <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                            </label>
+                        </div>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-magic" style="flex: 1;" id="optimizeEditBtn" onclick="optimizeEditPrompt()">
+                                <span class="spinner" id="editSpinner"></span> <i class="fa-solid fa-microchip"></i> KI Prompt Generieren
+                            </button>
+                        </div>
+
+                        <!-- Auto Bot Console Terminal für Edit -->
+                        <div id="autoBotConsoleEdit" style="display:none; margin-top:15px; background:#0f172a; border:1px solid #1e293b; border-radius:8px; overflow:hidden;">
+                            <div style="background:#1e293b; padding:6px 10px; font-size:0.7rem; color:#94a3b8; font-family:var(--font-code); display:flex; justify-content:space-between;">
+                                <span><i class="fa-solid fa-terminal"></i> Auto-Bot Terminal (Edit)</span>
+                                <span id="autoBotStatusEdit">Idle</span>
+                            </div>
+                            <div id="autoBotLogEdit" style="padding:10px; max-height:200px; overflow-y:auto; font-family:var(--font-code); font-size:0.75rem; color:#cbd5e1; line-height:1.5;"></div>
+                        </div>
+                    </div>
 
                     <div class="generated-output" style="margin-top:15px;">
                          <div class="output-header">
@@ -298,6 +338,7 @@
                             </div>
                              <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.7rem;" onclick="copyResult('out-obj', this)">COPY</button>
                         </div>
+                        <div id="out-obj-meta" style="display: none; padding: 10px 15px; margin-bottom: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.8rem; border-left: 3px solid var(--primary); line-height: 1.5; color: var(--text-muted);"></div>
                         <div class="code-view" id="out-obj"></div>
                     </div>
                 </div>
