@@ -1148,27 +1148,39 @@ Licht-Physik Integration: ${o.physics}`;
         const model = document.getElementById('modelSelectEdit').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
-        const systemPrompt = `Du bist ein Experte für das Optimieren von Inpainting und Image-Editing Prompts für Diffusionsmodelle (wie Stable Diffusion / Midjourney). 
-Deine Aufgabe ist es, die gewünschte Bildänderung (Objekt hinzufügen, entfernen, ersetzen oder Stil ändern) in ein hochpräzises, englisches Prompting-Format zu übersetzen, das die Bild-KI perfekt versteht.
+        const systemPrompt = `Du bist ein Experte für das Optimieren von Inpainting- und Image-Editing-Prompts für Bildgeneratoren (wie Stable Diffusion / Midjourney).
+Deine Aufgabe ist es, den Änderungswunsch des Nutzers (Objekt hinzufügen, entfernen, ersetzen oder Stil ändern) in ein englisches Prompting-Format zu übersetzen, welches das ursprüngliche Bild so weit wie möglich unberührt lässt.
 
-Halte dich strikt an folgende Regeln:
+Mache einen fundamentalen Unterschied abhängig von der Bearbeitungsmethode (Scope):
 
-1. ZIELGERICHTET (Fokus auf Änderung): Erstelle einen Prompt, der sich exakt auf das hinzuzufügende, zu entfernende oder zu ändernde Objekt konzentriert.
-2. SPRACHE: Übersetze den Prompt komplett ins Englische. 
-3. DETAILS: Ergänze den Prompt mit relevanten Details passend zur gewählten Licht-Physik (z.B. soft blending, hard shadows, accurate reflections, high integration).
-4. KEIN UNNÖTIGES RAUSCHEN: Füge keine Elemente hinzu, die nicht im ursprünglichen Änderungswunsch stehen.
+1. WENN METHODE = "inpaint" (Inpainting / Masken-Modus):
+- Die Bild-KI verändert NUR den maskierten Bereich. Der Prompt darf sich AUSSCHLIESSLICH auf das beziehen, was INNERHALB der Maske entstehen oder verschwinden soll.
+- Beschreibe NIEMALS Details außerhalb der Maske (z.B. den Kopf der Person, das Gesicht, Kleidung oder den Hintergrund), da dies die KI dazu zwingt, diese Elemente fälschlicherweise in den maskierten Bereich (z.B. die Hand) zu zeichnen!
+- Der Prompt muss sehr kurz und isoliert sein.
+- Beispiel: Statt "Die Dame hat ein iPhone in der Hand" schreibe nur: "A modern iPhone 16 Pro Max held in a hand, matching lighting, realistic integration".
+
+2. WENN METHODE = "global" (Globales Img2Img):
+- Die Bild-KI verändert das gesamte Bild. Um das ursprüngliche Bild maximal beizubehalten, MUSS der Prompt die bestehenden Elemente beschreiben und explizit anweisen, diese nicht zu verändern.
+- Verwende exakte Anweisungen zur Erhaltung: "preserving the original composition, keeping the exact background, subject identity, clothing, pose, and environment completely unchanged from the source image".
+- Formuliere die gewünschte Änderung als einzigen Zusatz am Ende.
+- Beispiel: "The original image composition and subject remain completely unchanged, preserving the woman, her pose, her hoodie, and the street background exactly as in the source image, with the only modification being [DEINE GEWÜNSCHTE ÄNDERUNG]".
+
+Allgemeine Regeln:
+- Sprache: Immer auf Englisch antworten.
+- Licht & Physik: Integriere die Licht-Physik ("${o.physics}") passend (z.B. "accurate lighting reflections", "matching shadows").
+- Denoising Strength: Nimm Rücksicht darauf, dass eine Denoising Strength von "${denoise}" verwendet wird. Je höher dieser Wert, desto aggressiver muss der Prompt auf den Erhalt des Originals pochen.
 
 Ausgabe-Format:
-Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgende Struktur haben:
+Gib das Ergebnis als valides JSON-Objekt zurück:
 {
   "edit_workflow": {
     "intent": "Short summary of the edit goal in English",
-    "physics_integration": "How the lighting and shadows should merge in English (e.g. realistic shadows matching ambient light, soft color bleed)"
+    "physics_integration": "How the lighting and shadows should merge in English"
   },
   "prompts": {
-    "technical_prompt": "Technical rendering keywords for the edit (e.g., matching noise, identical resolution, seamless integration)",
-    "scene_prompt": "Prompt focusing on the object/change description in high detail in English",
-    "final_prompt": "The final integrated English prompt to be entered in the Stable Diffusion/Midjourney Inpainting box"
+    "technical_prompt": "Technical rendering keywords for the edit (e.g., matching noise, seamless integration)",
+    "scene_prompt": "Prompt focusing ONLY on the change or the overall preserved scene description in English",
+    "final_prompt": "The final integrated English prompt to be entered into the generator"
   }
 }`;
 
