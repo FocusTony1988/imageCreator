@@ -74,6 +74,9 @@
     }
 
     const HARDCODED_URL = 'http://localhost:1234/v1';
+    const BACKEND_API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== ''
+        ? ''
+        : 'https://imagecreator-t9dx.onrender.com';
     let globalPromptStyle = 'tech'; 
 
     function switchTab(id) {
@@ -481,7 +484,7 @@ Every value inside the JSON must be written in English.`;
         const sysPrompt = "Du bist ein Experte für Bild-Prompts. Übersetze die Idee des Nutzers in einen simplen, effektiven englischen Bild-Prompt. Konzentriere dich auf das Subjekt, die Umgebung und die Grundstimmung. Antworte NUR mit dem englischen Prompt, ohne Erklärungen, ohne markdown Formatierung.";
         
         try {
-            const response = await fetch('/api/optimize', {
+            const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -556,7 +559,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         if (!useAutoBot) {
             // Standard Single Call Optimization
             try {
-                const response = await fetch('/api/optimize', {
+                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -593,7 +596,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             statusSpan.style.color = 'var(--warning)';
             
             try {
-                const response = await fetch('/api/generate', {
+                const response = await fetch(BACKEND_API_URL + '/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1190,7 +1193,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
 
         if (!useAutoBot) {
             try {
-                const response = await fetch('/api/optimize', {
+                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1226,7 +1229,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             statusSpan.style.color = 'var(--warning)';
             
             try {
-                const response = await fetch('/api/generate', {
+                const response = await fetch(BACKEND_API_URL + '/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1341,7 +1344,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         if (!useAutoBot) {
             // Standard Single Call Optimization
             try {
-                const response = await fetch('/api/optimize', {
+                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1377,7 +1380,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             statusSpan.style.color = 'var(--warning)';
             
             try {
-                const response = await fetch('/api/generate', {
+                const response = await fetch(BACKEND_API_URL + '/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1667,7 +1670,7 @@ REGELN:
 
         if (!useAutoBot) {
             try {
-                const response = await fetch('/api/optimize', {
+                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1704,7 +1707,7 @@ REGELN:
             statusSpan.style.color = 'var(--warning)';
             
             try {
-                const response = await fetch('/api/generate', {
+                const response = await fetch(BACKEND_API_URL + '/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1815,7 +1818,7 @@ Antworte zwingend in dieser Struktur (auf Deutsch):
 Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkte Inspiration!`;
 
         try {
-            const res = await fetch('/api/optimize', {
+            const res = await fetch(BACKEND_API_URL + '/api/optimize', {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -2196,7 +2199,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         const sysPrompt = "Du bist ein Regisseur für KI-Videogeneratoren wie VEO, Luma oder Runway. Optimiere den übergebenen Prompt so, dass er fließende Kamerabewegungen und hohe Konsistenz erzielt. Schreibe ihn in exzellentes 'Regie-Englisch' um, passend für Video-KIs. Ändere nicht das Hauptmotiv, sondern perfektioniere den Stil und den Ablauf. Antworte NUR mit dem fertigen Prompt, ohne Formatierung oder Erklärungen.";
         
         try {
-            const response = await fetch('/api/optimize', {
+            const response = await fetch(BACKEND_API_URL + '/api/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
