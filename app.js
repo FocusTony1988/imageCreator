@@ -922,6 +922,15 @@ All values in the JSON output MUST be in English.`;
             el.addEventListener('input', (e) => {
                 const [cat, field] = el.dataset.nano.split('.');
                 nanoState[cat][field] = e.target.value;
+                
+                // Reset preset selector if user manually inputs action or what prompt
+                if(cat === 'obj' && (field === 'action' || field === 'what')) {
+                    const selector = document.getElementById('editPresetSelector');
+                    if (selector) selector.value = "";
+                    const descEl = document.getElementById('editPresetDesc');
+                    if (descEl) descEl.innerText = "";
+                }
+                
                 debouncedUpdateNano();
             });
         });
@@ -941,6 +950,65 @@ All values in the JSON output MUST be in English.`;
         nanoState.obj.scope = scope;
         updateNanoPrompts();
     }
+
+    window.applyEditPreset = function() {
+        const preset = document.getElementById('editPresetSelector').value;
+        const actionSelect = document.querySelector('[data-nano="obj.action"]');
+        const whatInput = document.querySelector('[data-nano="obj.what"]');
+        const descEl = document.getElementById('editPresetDesc');
+
+        if (!preset) {
+            actionSelect.value = "add";
+            whatInput.value = "";
+            descEl.innerText = "";
+            nanoState.obj.action = "add";
+            nanoState.obj.what = "";
+            updateNanoPrompts();
+            return;
+        }
+
+        let action = "add";
+        let what = "";
+        let desc = "";
+
+        switch (preset) {
+            case 'kleidung':
+                action = "alter";
+                what = "Zieh der Person vom Referenzbild einen schwarzen Anzug und eine gelbe Krawatte an.";
+                desc = "Erklärung: Kleidung von Models oder Portraits kann einfach virtuell angepasst werden.";
+                break;
+            case 'add_obj':
+                action = "add";
+                what = "Füge einen Hai in den Pool hinzu.";
+                desc = "Erklärung: Bestehende Fotos können mit neuen Objekten erweitert werden, ohne das Bild zu verfälschen.";
+                break;
+            case 'change_obj':
+                action = "replace";
+                what = "Ändere die zwei Büsten im Bild zu Stormtrooper-Statuen.";
+                desc = "Erklärung: Beliebige Objekte lassen sich durch andere ersetzen.";
+                break;
+            case 'remove_obj':
+                action = "remove";
+                what = "Entferne bitte alle Menschen aus diesem Urlaubsfoto.";
+                desc = "Erklärung: Ungewollte Personen oder Dinge lassen sich nahtlos löschen.";
+                break;
+            case 'style':
+                action = "alter";
+                what = "Erstelle das Bild im Stil eines handgezeichneten Comics.";
+                desc = "Erklärung: Je nachdem, welcher Stil gefragt ist, kann das Bild sofort umgewandelt werden.";
+                break;
+        }
+        
+        actionSelect.value = action;
+        whatInput.value = what;
+        descEl.innerText = desc;
+        
+        nanoState.obj.action = action;
+        nanoState.obj.what = what;
+        
+        // Trigger prompt generation
+        updateNanoPrompts();
+    };
     
     function updateCineMode(mode) {
         nanoState.cine.mode = mode;
@@ -990,6 +1058,10 @@ All values in the JSON output MUST be in English.`;
             }
         }
         document.getElementById('out-obj').innerHTML = editPrompt;
+        
+        // Hide metadata container when displaying live local fast-gen
+        const metaEl = document.getElementById('out-obj-meta');
+        if (metaEl) metaEl.style.display = 'none';
 
         document.getElementById('out-bg').innerHTML = `Background: ${nanoState.bg.mode}, Prompt: ${h(nanoState.bg.prompt)}`;
 
@@ -1053,6 +1125,169 @@ Aspect Ratio: ${ci.ratio.replace('--ar ', '')}`;
         else if(mode === 'colorize') p = "Colorization: Authentic historical colorization. Convert B&W to color.";
         else p = "Upscale & Enhance: Increase resolution to 4k. Hallucinate missing details in textures.";
         document.getElementById('out-res').innerHTML = p;
+    }
+
+    async function optimizeEditPrompt() {
+        const btn = document.getElementById('optimizeEditBtn');
+        const spinner = document.getElementById('editSpinner');
+        btn.disabled = true; spinner.style.display = 'inline-block';
+
+        const o = nanoState.obj;
+        const denoise = (o.strength / 100).toFixed(2);
+        
+        const rawContext = `Aktion: ${o.action}
+Prompt (Was soll entstehen): ${o.what}
+Scope: ${o.scope} (Inpaint oder Global)
+Denoising Strength: ${denoise}
+Licht-Physik Integration: ${o.physics}`;
+        
+        const useAutoBot = document.getElementById('useAutoBotEdit').checked;
+        const model = document.getElementById('modelSelectEdit').value;
+        const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
+
+        const systemPrompt = `Du bist ein Experte für das Optimieren von Inpainting und Image-Editing Prompts für Diffusionsmodelle (wie Stable Diffusion / Midjourney). 
+Deine Aufgabe ist es, die gewünschte Bildänderung (Objekt hinzufügen, entfernen, ersetzen oder Stil ändern) in ein hochpräzises, englisches Prompting-Format zu übersetzen, das die Bild-KI perfekt versteht.
+
+Halte dich strikt an folgende Regeln:
+
+1. ZIELGERICHTET (Fokus auf Änderung): Erstelle einen Prompt, der sich exakt auf das hinzuzufügende, zu entfernende oder zu ändernde Objekt konzentriert.
+2. SPRACHE: Übersetze den Prompt komplett ins Englische. 
+3. DETAILS: Ergänze den Prompt mit relevanten Details passend zur gewählten Licht-Physik (z.B. soft blending, hard shadows, accurate reflections, high integration).
+4. KEIN UNNÖTIGES RAUSCHEN: Füge keine Elemente hinzu, die nicht im ursprünglichen Änderungswunsch stehen.
+
+Ausgabe-Format:
+Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgende Struktur haben:
+{
+  "edit_workflow": {
+    "intent": "Short summary of the edit goal in English",
+    "physics_integration": "How the lighting and shadows should merge in English (e.g. realistic shadows matching ambient light, soft color bleed)"
+  },
+  "prompts": {
+    "technical_prompt": "Technical rendering keywords for the edit (e.g., matching noise, identical resolution, seamless integration)",
+    "scene_prompt": "Prompt focusing on the object/change description in high detail in English",
+    "final_prompt": "The final integrated English prompt to be entered in the Stable Diffusion/Midjourney Inpainting box"
+  }
+}`;
+
+        function applyEditResult(res) {
+            const p = res.prompts?.final_prompt || "";
+            const tech = res.prompts?.technical_prompt || "";
+            const intent = res.edit_workflow?.intent || "";
+            const integration = res.edit_workflow?.physics_integration || "";
+            
+            const metaEl = document.getElementById('out-obj-meta');
+            if (metaEl) {
+                metaEl.innerHTML = `
+                    <b>Ziel:</b> ${intent}<br>
+                    <b>Integration:</b> ${integration}<br>
+                    <b>Tech:</b> ${tech}
+                `;
+                metaEl.style.display = 'block';
+            }
+            
+            document.getElementById('out-obj').innerHTML = `<span style="color:var(--success); font-weight:bold;">${p}</span>`;
+        }
+
+        if (!useAutoBot) {
+            try {
+                const response = await fetch('/api/optimize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal: rawContext,
+                        model: model,
+                        system_prompt: systemPrompt,
+                        lm_url: lmUrl
+                    })
+                });
+                
+                if (!response.ok) throw new Error("API Fehler");
+                const data = await response.json();
+                const jsonStr = data.optimized_goal;
+                
+                const res = extractJSON(jsonStr);
+                applyEditResult(res);
+                showToast("Edit-KI Prompt erfolgreich generiert!");
+                btn.disabled = false; spinner.style.display = 'none';
+            } catch(e) { 
+                console.error(e.message);
+                showToast("Fehler: " + e.message, true); 
+                btn.disabled = false; spinner.style.display = 'none';
+            }
+        } else {
+            // Auto Bot Streaming
+            const consoleDiv = document.getElementById('autoBotConsoleEdit');
+            const logDiv = document.getElementById('autoBotLogEdit');
+            const statusSpan = document.getElementById('autoBotStatusEdit');
+            
+            consoleDiv.style.display = 'block';
+            logDiv.innerHTML = '';
+            statusSpan.innerText = 'Running...';
+            statusSpan.style.color = 'var(--warning)';
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        goal: rawContext,
+                        model: model,
+                        system_prompt: systemPrompt,
+                        lm_url: lmUrl
+                    })
+                });
+                
+                if (!response.ok) throw new Error("API Fehler");
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.replace('data: ', '');
+                            try {
+                                const payload = JSON.parse(dataStr);
+                                if (payload.event === 'log' || payload.event === 'experts' || payload.event === 'draft' || payload.event === 'review') {
+                                    const logEntry = document.createElement('div');
+                                    logEntry.innerHTML = `<span style="color:#64748b;">[AutoBot]</span> ${payload.message}`;
+                                    logDiv.appendChild(logEntry);
+                                    logDiv.scrollTop = logDiv.scrollHeight;
+                                } else if (payload.event === 'final') {
+                                    const logEntry = document.createElement('div');
+                                    logEntry.innerHTML = `<span style="color:var(--success);">[AutoBot]</span> ${payload.message}`;
+                                    logDiv.appendChild(logEntry);
+                                    logDiv.scrollTop = logDiv.scrollHeight;
+                                    
+                                    statusSpan.innerText = 'Completed';
+                                    statusSpan.style.color = 'var(--success)';
+                                    
+                                    const res = extractJSON(payload.content);
+                                    applyEditResult(res);
+                                    showToast("Edit Auto Bot Prompt erfolgreich generiert!");
+                                }
+                            } catch (err) {
+                                console.error("Error parsing SSE JSON:", err);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(e.message);
+                showToast("Fehler: " + e.message, true); 
+                statusSpan.innerText = 'Failed';
+                statusSpan.style.color = 'var(--danger)';
+            }
+            btn.disabled = false; spinner.style.display = 'none';
+        }
     }
 
     async function optimizeCinePrompt() {
