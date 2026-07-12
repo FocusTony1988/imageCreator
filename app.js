@@ -1149,21 +1149,20 @@ Licht-Physik Integration: ${o.physics}`;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
         const systemPrompt = `Du bist ein Experte für das Optimieren von Inpainting- und Image-Editing-Prompts für Bildgeneratoren (wie Stable Diffusion / Midjourney).
-Deine Aufgabe ist es, den Änderungswunsch des Nutzers (Objekt hinzufügen, entfernen, ersetzen oder Stil ändern) in ein englisches Prompting-Format zu übersetzen, welches das ursprüngliche Bild so weit wie möglich unberührt lässt.
+Deine Aufgabe ist es, den Änderungswunsch des Nutzers (Hinzufügen, Entfernen, Ersetzen oder Stil ändern) in ein englisches Prompting-Format zu übersetzen.
 
 Mache einen fundamentalen Unterschied abhängig von der Bearbeitungsmethode (Scope):
 
 1. WENN METHODE = "inpaint" (Inpainting / Masken-Modus):
-- Die Bild-KI verändert NUR den maskierten Bereich. Der Prompt darf sich AUSSCHLIESSLICH auf das beziehen, was INNERHALB der Maske entstehen oder verschwinden soll.
-- Beschreibe NIEMALS Details außerhalb der Maske (z.B. den Kopf der Person, das Gesicht, Kleidung oder den Hintergrund), da dies die KI dazu zwingt, diese Elemente fälschlicherweise in den maskierten Bereich (z.B. die Hand) zu zeichnen!
-- Der Prompt muss sehr kurz und isoliert sein.
-- Beispiel: Statt "Die Dame hat ein iPhone in der Hand" schreibe nur: "A modern iPhone 16 Pro Max held in a hand, matching lighting, realistic integration".
+- Die Bild-KI verändert NUR den maskierten Bereich. Der Prompt darf sich AUSSCHLIESSLICH auf das beziehen, was INNERHALB der Maske entstehen, verschwinden oder ersetzt werden soll.
+- FÜR ERSETZEN (Swap/Replace): Beschreibe im Prompt NUR das NEUE Objekt, das anstelle des alten Objekts erscheinen soll (z.B. wenn der Pullover durch einen roten Pullover ersetzt wird, beschreibe nur den roten Pullover). Beschreibe NIEMALS Gesicht, Person oder Hintergrund außerhalb der Maske.
+- FÜR STIL ÄNDERN (Alter): Wenn nur der Stil eines Teilbereichs geändert wird, beschreibe das Subjekt im neuen Stil im Detail (z.B. "cybernetic arm" statt echtem Arm).
+- Beschreibe NIEMALS Details außerhalb der Maske (z.B. Kopf, Gesicht, Kleidung oder Hintergrund), da dies die KI dazu zwingt, diese Elemente fälschlicherweise in den maskierten Bereich zu zeichnen!
 
 2. WENN METHODE = "global" (Globales Img2Img):
 - Die Bild-KI verändert das gesamte Bild. Um das ursprüngliche Bild maximal beizubehalten, MUSS der Prompt die bestehenden Elemente beschreiben und explizit anweisen, diese nicht zu verändern.
-- Verwende exakte Anweisungen zur Erhaltung: "preserving the original composition, keeping the exact background, subject identity, clothing, pose, and environment completely unchanged from the source image".
-- Formuliere die gewünschte Änderung als einzigen Zusatz am Ende.
-- Beispiel: "The original image composition and subject remain completely unchanged, preserving the woman, her pose, her hoodie, and the street background exactly as in the source image, with the only modification being [DEINE GEWÜNSCHTE ÄNDERUNG]".
+- FÜR ERSETZEN (Swap/Replace) & HINZUFÜGEN (Insert): Verwende exakte Erhaltungs-Regeln: "preserving the original composition, keeping the exact background, subject identity, clothing, pose, and environment completely unchanged from the source image, with the only modification being [ÄNDERUNG]".
+- FÜR STIL ÄNDERN (Alter) (z.B. Anime, Comic): Da sich der Stil des gesamten Bildes ändern soll, weise die KI an, die Konturen, Komposition und Personen-Identität beizubehalten, aber das Rendering zu ändern: "Redraw the entire original scene in [NEUER STIL] style, preserving the exact composition, pose, subject identity (the girl's face, hair, and clothing), and background structures from the source image".
 
 Allgemeine Regeln:
 - Sprache: Immer auf Englisch antworten.
