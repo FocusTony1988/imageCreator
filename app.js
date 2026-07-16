@@ -521,7 +521,7 @@ Every value inside the JSON must be written in English.`;
         btn.disabled = true; spinner.style.display = 'inline-block';
         
         const context = document.getElementById('rawPrompt').innerText;
-        const useAutoBot = document.getElementById('useAutoBot').checked;
+        const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectMain').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
         
@@ -603,7 +603,8 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                         goal: context,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: document.getElementById('autoBotLevel').value
                     })
                 });
                 
@@ -1048,7 +1049,7 @@ Scope: ${o.scope} (Inpaint oder Global)
 Denoising Strength: ${denoise}
 Licht-Physik Integration: ${o.physics}`;
         
-        const useAutoBot = document.getElementById('useAutoBotEdit').checked;
+        const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectEdit').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
@@ -1151,7 +1152,8 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
                         goal: rawContext,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: document.getElementById('autoBotLevelEdit').value
                     })
                 });
                 
@@ -1216,7 +1218,7 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
         const ci = nanoState.cine;
         const rawContext = `Mode: ${ci.mode === 'edit' ? "EDIT EXISTING IMAGE" : "NEW GENERATION"}\nScene: ${ci.scene || "Not specified"}\nCamera: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming: ${ci.moves.join(', ')}`;
         
-        const useAutoBot = document.getElementById('useAutoBotCine').checked;
+        const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectCine').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
@@ -1302,7 +1304,8 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                         goal: rawContext,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: document.getElementById('autoBotLevelCine').value
                     })
                 });
                 
@@ -1556,7 +1559,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         document.getElementById('veo-output-container').style.display = 'none';
 
         vals.Stil = document.getElementById('veo_style').value;
-        const useAutoBot = document.getElementById('useAutoBotVeo').checked;
+        const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectVeo').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
@@ -1629,7 +1632,8 @@ REGELN:
                         goal: structuredInput,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: document.getElementById('autoBotLevelVeo').value
                     })
                 });
                 
