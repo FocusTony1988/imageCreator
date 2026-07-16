@@ -8,6 +8,15 @@ from flask_cors import CORS
 from openai import OpenAI
 from dotenv import load_dotenv
 
+import tempfile
+import cv2
+import numpy as np
+from pathlib import Path
+from watermark_engine.gemini_engine import GeminiEngine
+from watermark_engine import region_eraser
+from watermark_engine import image_io
+from watermark_engine.metadata import remove_ai_metadata
+
 # Lade Umgebungsvariablen (.env Datei) für lokale Entwicklung
 load_dotenv()
 
@@ -160,8 +169,9 @@ def generate_solution():
     model = data.get('model', 'gemini-3.5-flash')
     sys_prompt = data.get('system_prompt', '')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+    level = str(data.get('level', '3'))
     
-    print(f"[Auto Bot] Starting Agentic Workflow with {model}...")
+    print(f"[Auto Bot] Starting Agentic Workflow (Level {level}) with {model}...")
     
     def event_stream():
         context = f"Nutzer-Prompt:\n{goal}\n\nStrukturvorgaben & Regeln:\n{sys_prompt}"
@@ -175,6 +185,49 @@ def generate_solution():
                     yield ('result', val)
                 elif event_type == 'error':
                     yield ('log', f"data: {json.dumps({'event': 'log', 'message': f'🔴 {val}'})}\n\n")
+
+        if level == '1':
+            yield f"data: {json.dumps({'event': 'log', 'message': '🌱 Level 1 (Raw / Purist): Übersetze Idee und setze primären Fokus...'})}\n\n"
+            sys_prompt_l1 = (
+                "Du bist ein puristischer Prompt-Engineer. Übersetze die Idee ins Englische und füge maximal 2–3 prägnante, stilistische Keywords hinzu. "
+                "Erzeuge KEINE überladenen oder widersprüchlichen Prompts. Belasse das Bild so roh und authentisch wie möglich. "
+                "Liefere AUSSCHLIESSLICH das finale JSON Objekt zurück (wie in der Strukturvorgabe gefordert)."
+            )
+            l1_user = f"Strukturvorgaben & Regeln:\n{sys_prompt}\n\nNutzer-Prompt:\n{goal}"
+            
+            final_concept = None
+            for ev_type, ev_val in call_ai([{"role": "system", "content": sys_prompt_l1}, {"role": "user", "content": l1_user}], temperature=0.3):
+                if ev_type == 'log': yield ev_val
+                elif ev_type == 'result': final_concept = ev_val
+                    
+            if not final_concept:
+                final_concept = "{ \"error\": \"Generierung fehlgeschlagen.\" }"
+            
+            yield f"data: {json.dumps({'event': 'final', 'content': final_concept, 'message': 'Level 1 Prompt generiert!'})}\n\n"
+            return
+            
+        elif level == '2':
+            yield f"data: {json.dumps({'event': 'log', 'message': '⚖️ Level 2 (Balanced): Optimiere Struktur und ergänze grundlegende Einstellungen...'})}\n\n"
+            sys_prompt_l2 = (
+                "Du bist ein erfahrener Prompt-Engineer. Optimiere den Prompt leicht. Füge grundlegende Licht- und Kameraeinstellungen hinzu, "
+                "aber achte strikt darauf, keine logischen Widersprüche (z.B. weiches Mondlicht vs. harte Kontraste) zu erzeugen. "
+                "Der Prompt soll balanciert und stimmig wirken, ohne die KI mit Mikro-Details zu bombardieren. "
+                "Liefere AUSSCHLIESSLICH das finale JSON Objekt zurück (wie in der Strukturvorgabe gefordert)."
+            )
+            l2_user = f"Strukturvorgaben & Regeln:\n{sys_prompt}\n\nNutzer-Prompt:\n{goal}"
+            
+            final_concept = None
+            for ev_type, ev_val in call_ai([{"role": "system", "content": sys_prompt_l2}, {"role": "user", "content": l2_user}], temperature=0.5):
+                if ev_type == 'log': yield ev_val
+                elif ev_type == 'result': final_concept = ev_val
+                    
+            if not final_concept:
+                final_concept = "{ \"error\": \"Generierung fehlgeschlagen.\" }"
+            
+            yield f"data: {json.dumps({'event': 'final', 'content': final_concept, 'message': 'Level 2 Prompt generiert!'})}\n\n"
+            return
+
+        yield f"data: {json.dumps({'event': 'log', 'message': '🚀 Level 3 (Overdrive): Starte volle 4-Agenten-Diskussion...'})}\n\n"
 
         # 1. Expert Assembly
         yield f"data: {json.dumps({'event': 'log', 'message': '🧠 Rufe Expertengremium zusammen...'})}\n\n"
@@ -277,6 +330,55 @@ def generate_solution():
         yield f"data: {json.dumps({'event': 'final', 'content': final_concept, 'message': 'Workflow erfolgreich beendet!'})}\n\n"
         
     return Response(event_stream(), mimetype='text/event-stream')
+
+@app.route('/api/watermark/remove', methods=['POST'])
+def remove_watermark():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty file"}), 400
+
+    remove_synthid = request.form.get('remove_synthid') == 'true'
+
+    temp_path = None
+    out_path = None
+    try:
+        # Save uploaded file to a temporary file
+        fd, temp_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        file.save(temp_path)
+
+        # Read image
+        img = image_io.imread(temp_path)
+        if img is None:
+            return jsonify({"error": "Could not read image"}), 400
+        
+        # Detect & remove visible watermark
+        engine = GeminiEngine()
+        mask = engine.footprint_mask(img, force=True)
+        
+        out_fd, out_path = tempfile.mkstemp(suffix=".png")
+        os.close(out_fd)
+
+        if mask is not None:
+            cleaned = region_eraser.erase(img, mask=mask)
+            image_io.imwrite(out_path, cleaned)
+        else:
+            import shutil
+            shutil.copyfile(temp_path, out_path)
+        
+        # If requested, strip SynthID metadata (C2PA / EXIF / XMP)
+        if remove_synthid:
+            remove_ai_metadata(Path(out_path), Path(out_path))
+
+        return send_file(out_path, mimetype='image/png')
+            
+    except Exception as e:
+        print(f"Error processing watermark: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5080))
