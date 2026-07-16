@@ -521,7 +521,7 @@ Every value inside the JSON must be written in English.`;
         btn.disabled = true; spinner.style.display = 'inline-block';
         
         const context = document.getElementById('rawPrompt').innerText;
-        const useAutoBot = document.getElementById('useAutoBot').checked;
+        const autoBotLevel = document.getElementById('autoBotLevel').value;
         const model = document.getElementById('modelSelectMain').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
         
@@ -556,35 +556,6 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
   }
 }`;
 
-        if (!useAutoBot) {
-            // Standard Single Call Optimization
-            try {
-                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        goal: context,
-                        model: model,
-                        system_prompt: systemPrompt,
-                        lm_url: lmUrl
-                    })
-                });
-                
-                if (!response.ok) throw new Error("API Fehler");
-                const data = await response.json();
-                const jsonStr = data.optimized_goal;
-                
-                const res = extractJSON(jsonStr);
-                document.getElementById('codeBlock').textContent = JSON.stringify(res, null, 2);
-                Prism.highlightElement(document.getElementById('codeBlock'));
-                showToast("KI JSON erfolgreich generiert!");
-                btn.disabled = false; spinner.style.display = 'none';
-            } catch(e) { 
-                console.error(e.message);
-                showToast("Fehler: " + e.message, true); 
-                btn.disabled = false; spinner.style.display = 'none';
-            }
-        } else {
             // Auto Bot Streaming
             const consoleDiv = document.getElementById('autoBotConsole');
             const logDiv = document.getElementById('autoBotLog');
@@ -603,7 +574,8 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                         goal: context,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: autoBotLevel
                     })
                 });
                 
@@ -658,104 +630,8 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 statusSpan.style.color = 'var(--danger)';
             }
             btn.disabled = false; spinner.style.display = 'none';
-        }
     }
 
-    async function runAutoFill() {
-        const input = document.getElementById('smartInput').value;
-        if(!input) {
-            showToast("Bitte zuerst einen Text eingeben!", true);
-            return;
-        }
-        document.getElementById('spinAuto').style.display = 'inline-block';
-        
-        const systemPrompt = `You are an expert parsing assistant. Your task is to analyze a natural language image generation description and extract parameters to fill out an HTML form.
-You MUST return ONLY a raw JSON object. Do not wrap it in markdown. Do not add any conversational text.
-All values in the JSON output MUST be in English.`;
-
-        const prompt = `Map the description: "${input}" into this JSON schema. Choose the closest matching value from the options provided below for each select key. If a select key is not mentioned in the description, omit it from the JSON.
-        
-        Available keys and their options (use the value representation inside parenthesis):
-        - gender ("woman", "man", "non-binary person", "android robot", "cybernetic human", "mythical being")
-        - ageGroup ("child, 8 years old", "teenager", "20 years old, young adult", "30 years old", "40 years old, mature", "50 years old", "60 years old", "70 years old, elderly")
-        - ethnicity ("American", "Germanic", "French", "Mediterranean", "Scandinavian", "Slavic", "African descent", "East Asian", "South Asian", "Latino", "Middle Eastern", "futuristic skin", "fantasy features")
-        - bodyType ("slender model physique", "athletic toned body", "muscular physique", "curvy figure", "average realistic body", "plus size")
-        - hairColor ("blonde", "brunette", "black", "ginger red", "platinum white", "grey", "pastel colored", "neon glowing hair", "bald")
-        - hairStyle ("long straight hair", "short pixie cut", "voluminous curly hair", "wavy hair", "high ponytail", "bob cut", "undercut", "messy bun", "wet look hair")
-        - eyeColor ("crystal blue", "emerald green", "deep brown", "hazel", "steel grey", "violet", "glowing cybernetic")
-        - expression ("neutral cool expression", "romantic loving gaze", "happy beaming smile", "serious focused look", "angry intense glare", "sad melancholic", "surprised expression", "dreamy look", "seductive gaze")
-        
-        For the following fields, you can either select a standard key option or provide a custom English text:
-        - clothing: (standard options: "casual wear", "business suit", "elegant evening gown", "futuristic armor", "sportswear", "swimwear bikini", "cyberpunk street wear", or write a custom description of the clothes)
-        - location: (standard options: "indoor studio", "cyberpunk rain street", "luxury hotel terrace", "sandy beach", "neon-lit bar", "ancient temple ruins", "space station deck", "futuristic laboratory", or write a custom description of the place)
-        - era: (standard options: "modern day", "near future 2030", "year 2077 cyberpunk", "early 2000s Y2K aesthetic", "1990s aesthetic", "1980s synthwave style", "1970s retro", "1960s style", "Victorian era", "medieval era", "ancient history", or write a custom era description)
-        - lighting: (standard options: "dramatic cinematic lighting", "soft natural window light", "golden hour sunlight", "volumetric god rays", "neon cyan and magenta lighting", "dark moody low-key lighting", "professional studio softbox", "Rembrandt lighting", "harsh sunlight", or write a custom lighting description)
-        - weather: (standard options: "clear sunny sky", "heavy rain", "stormy lightning", "heavy snow", "thick fog", "overcast sky", "dusty atmosphere", or write a custom weather description)
-        
-        Camera Settings:
-        - viewAngle: ("eye-level shot", "low angle shot looking up", "high angle shot looking down", "top-down drone view", "over-the-shoulder shot", "dutch angle dynamic shot", "first-person POV shot", "extreme macro close-up", "wide angle shot", "fisheye lens effect", "telephoto compression", "selfie shot")
-        - filmStock: ("digital crisp 8k", "Kodak Portra 400 film grain", "Cinestill 800T halation", "Fujifilm Velvia 50", "Kodak Tri-X 400 black and white", "vintage Technicolor", "bleach bypass gritty", "VHS tape artifacting", "Polaroid instant photo", "IMAX 70mm film quality")
-        - renderEngine: ("photorealistic raw photo", "Unreal Engine 5 render", "Octane 3D render", "Pixar 3D animation style", "modern anime style", "classic oil painting", "watercolor painting", "digital concept art", "flat vector art", "retro pixel art")
-        - aspectRatio: ("16:9", "9:16", "1:1", "21:9", "4:3", "3:4", "2.35:1")
-        
-        Other fields:
-        - celebrityName: if description mentions a celebrity, set useCelebrity to true and set celebrityName to their name.
-        
-        Response JSON format example:
-        {
-          "describePerson": true,
-          "useCelebrity": false,
-          "gender": "woman",
-          "hairColor": "ginger red",
-          "location": "neon-lit bar",
-          "clothing": "leather jacket",
-          "aspectRatio": "16:9"
-        }`;
-        
-        try {
-             const jsonStr = await fetchLocalAI(prompt, systemPrompt);
-             const res = extractJSON(jsonStr);
-             
-             // Apply values to HTML elements dynamically
-             for (const [key, value] of Object.entries(res)) {
-                 const el = document.getElementById(key);
-                 if (el) {
-                     if (el.type === 'checkbox') {
-                         el.checked = !!value;
-                     } else {
-                         el.value = value;
-                     }
-                 }
-                 
-                 // Smart check for manual options
-                 const manualEl = document.getElementById(key + '_manual');
-                 if (manualEl) {
-                     const selectEl = el;
-                     if (selectEl && selectEl.options) {
-                         const hasOption = Array.from(selectEl.options).some(opt => opt.value === value);
-                         if (!hasOption && value) {
-                             selectEl.value = ""; 
-                             manualEl.value = value;
-                         } else {
-                             manualEl.value = "";
-                         }
-                     }
-                 }
-             }
-             
-             showToast("Formular erfolgreich vorausgefüllt!");
-        } catch(e) {
-             console.error("Auto-Fill error:", e);
-             // Fallback rules falls die KI streikt
-             if(input.toLowerCase().includes('mann')) document.getElementById('gender').value = 'man';
-             if(input.toLowerCase().includes('frau')) document.getElementById('gender').value = 'woman';
-             showToast("Auto-Fill teilweise angewendet (Fallback).", true);
-        }
-        
-        document.getElementById('spinAuto').style.display = 'none';
-        handleGenVisibility();
-        updateGenSummary();
-    }
     
     function convertToProse(type, val) {
         if(!val) return "";
@@ -1202,33 +1078,7 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
             document.getElementById('out-obj').innerHTML = `<span style="color:var(--success); font-weight:bold;">${p}</span>`;
         }
 
-        if (!useAutoBot) {
-            try {
-                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        goal: rawContext,
-                        model: model,
-                        system_prompt: systemPrompt,
-                        lm_url: lmUrl
-                    })
-                });
-                
-                if (!response.ok) throw new Error("API Fehler");
-                const data = await response.json();
-                const jsonStr = data.optimized_goal;
-                
-                const res = extractJSON(jsonStr);
-                applyEditResult(res);
-                showToast("Edit-KI Prompt erfolgreich generiert!");
-                btn.disabled = false; spinner.style.display = 'none';
-            } catch(e) { 
-                console.error(e.message);
-                showToast("Fehler: " + e.message, true); 
-                btn.disabled = false; spinner.style.display = 'none';
-            }
-        } else {
+        const autoBotLevel = document.getElementById('autoBotLevelEdit').value;
             // Auto Bot Streaming
             const consoleDiv = document.getElementById('autoBotConsoleEdit');
             const logDiv = document.getElementById('autoBotLogEdit');
@@ -1247,7 +1097,8 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
                         goal: rawContext,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: autoBotLevel
                     })
                 });
                 
@@ -1301,7 +1152,6 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
                 statusSpan.style.color = 'var(--danger)';
             }
             btn.disabled = false; spinner.style.display = 'none';
-        }
     }
 
     async function optimizeCinePrompt() {
@@ -1312,7 +1162,7 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
         const ci = nanoState.cine;
         const rawContext = `Mode: ${ci.mode === 'edit' ? "EDIT EXISTING IMAGE" : "NEW GENERATION"}\nScene: ${ci.scene || "Not specified"}\nCamera: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming: ${ci.moves.join(', ')}`;
         
-        const useAutoBot = document.getElementById('useAutoBotCine').checked;
+        const autoBotLevel = document.getElementById('autoBotLevelCine').value;
         const model = document.getElementById('modelSelectCine').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
@@ -1352,34 +1202,6 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             Prism.highlightElement(document.getElementById('out-cine-final'));
         }
 
-        if (!useAutoBot) {
-            // Standard Single Call Optimization
-            try {
-                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        goal: rawContext,
-                        model: model,
-                        system_prompt: systemPrompt,
-                        lm_url: lmUrl
-                    })
-                });
-                
-                if (!response.ok) throw new Error("API Fehler");
-                const data = await response.json();
-                const jsonStr = data.optimized_goal;
-                
-                const res = extractJSON(jsonStr);
-                applyCineResult(res);
-                showToast("Cinema-KI JSON erfolgreich generiert!");
-                btn.disabled = false; spinner.style.display = 'none';
-            } catch(e) { 
-                console.error(e.message);
-                showToast("Fehler: " + e.message, true); 
-                btn.disabled = false; spinner.style.display = 'none';
-            }
-        } else {
             // Auto Bot Streaming
             const consoleDiv = document.getElementById('autoBotConsoleCine');
             const logDiv = document.getElementById('autoBotLogCine');
@@ -1398,7 +1220,8 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                         goal: rawContext,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: autoBotLevel
                     })
                 });
                 
@@ -1452,7 +1275,6 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 statusSpan.style.color = 'var(--danger)';
             }
             btn.disabled = false; spinner.style.display = 'none';
-        }
     }
 
     const cineData = {
@@ -1652,7 +1474,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         document.getElementById('veo-output-container').style.display = 'none';
 
         vals.Stil = document.getElementById('veo_style').value;
-        const useAutoBot = document.getElementById('useAutoBotVeo').checked;
+        const autoBotLevel = document.getElementById('autoBotLevelVeo').value;
         const model = document.getElementById('modelSelectVeo').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
@@ -1679,34 +1501,6 @@ REGELN:
 - Sound Design: ${vals.Audio}
 - Ästhetischer Stil: ${vals.Stil}`;
 
-        if (!useAutoBot) {
-            try {
-                const response = await fetch(BACKEND_API_URL + '/api/optimize', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        goal: structuredInput,
-                        model: model,
-                        system_prompt: systemPrompt,
-                        lm_url: lmUrl
-                    })
-                });
-                
-                if (!response.ok) throw new Error("API Fehler");
-                const data = await response.json();
-                
-                let cleanContent = data.optimized_goal.replace(/^["']|["']$/g, '').replace(/^(Here is the prompt:|Prompt:)/i, '').trim();
-                document.getElementById('veoFinalPrompt').innerText = cleanContent;
-                document.getElementById('veo-output-container').style.display = 'block';
-                showToast("Veo Prompt erfolgreich erstellt!");
-            } catch (e) {
-                console.error(e);
-                showToast("Fehler: " + e.message, true);
-            } finally {
-                aiBtn.disabled = false;
-                spinner.style.display = 'none';
-            }
-        } else {
             // Auto Bot mode
             const consoleDiv = document.getElementById('autoBotConsoleVeo');
             const logDiv = document.getElementById('autoBotLogVeo');
@@ -1725,7 +1519,8 @@ REGELN:
                         goal: structuredInput,
                         model: model,
                         system_prompt: systemPrompt,
-                        lm_url: lmUrl
+                        lm_url: lmUrl,
+                        level: autoBotLevel
                     })
                 });
                 
@@ -1782,7 +1577,6 @@ REGELN:
                 aiBtn.disabled = false;
                 spinner.style.display = 'none';
             }
-        }
     };
 
     window.copyVeoToClipboard = function() {
@@ -2237,5 +2031,100 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         }
         
         btn.innerHTML = '⚡ Optimiere Prompt';
+        btn.disabled = false;
+    };
+
+    // Global UI Handler
+    let wmCurrentFile = null;
+
+    const wmDropzone = document.getElementById('wm-dropzone');
+    const wmFileInput = document.getElementById('wm-file');
+    if(wmDropzone && wmFileInput) {
+        wmDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            wmDropzone.style.background = 'rgba(255, 255, 255, 0.1)';
+            wmDropzone.style.borderColor = 'var(--primary)';
+        });
+        wmDropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            wmDropzone.style.background = 'rgba(0,0,0,0.2)';
+            wmDropzone.style.borderColor = 'var(--border-color)';
+        });
+        wmDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            wmDropzone.style.background = 'rgba(0,0,0,0.2)';
+            wmDropzone.style.borderColor = 'var(--border-color)';
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                wmCurrentFile = e.dataTransfer.files[0];
+                handleWmFileSelect();
+            }
+        });
+        wmFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                wmCurrentFile = e.target.files[0];
+                handleWmFileSelect();
+            }
+        });
+    }
+
+    function handleWmFileSelect() {
+        if(!wmCurrentFile) return;
+        const container = document.getElementById('wm-preview-container');
+        const imgOrig = document.getElementById('wm-img-original');
+        const imgCleaned = document.getElementById('wm-img-cleaned');
+        const downloadBtn = document.getElementById('wm-download-btn');
+        
+        imgOrig.src = URL.createObjectURL(wmCurrentFile);
+        imgCleaned.src = "";
+        downloadBtn.style.display = 'none';
+        
+        container.style.display = 'block';
+        showToast("Bild geladen. Bereit zur Wasserzeichen-Entfernung.");
+    }
+
+    window.processWatermark = async function() {
+        if (!wmCurrentFile) return;
+        const btn = document.getElementById('wm-process-btn');
+        btn.innerHTML = '<span class="spinner" style="display:inline-block;"></span> Verarbeite...';
+        btn.disabled = true;
+
+        const removeSynthid = document.getElementById('wm-remove-synthid')?.checked || false;
+
+        const formData = new FormData();
+        formData.append('file', wmCurrentFile);
+        formData.append('remove_synthid', removeSynthid);
+
+        try {
+            const response = await fetch(BACKEND_API_URL + '/api/watermark/remove', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                let errorMsg = "API Fehler";
+                try {
+                    const data = await response.json();
+                    if(data.error) errorMsg = data.error;
+                } catch(e) {}
+                throw new Error(errorMsg);
+            }
+
+            const blob = await response.blob();
+            const cleanedUrl = URL.createObjectURL(blob);
+            
+            document.getElementById('wm-img-cleaned').src = cleanedUrl;
+            
+            const downloadBtn = document.getElementById('wm-download-btn');
+            downloadBtn.href = cleanedUrl;
+            downloadBtn.download = "cleaned_" + wmCurrentFile.name;
+            downloadBtn.style.display = 'inline-flex';
+            
+            showToast("Wasserzeichen erfolgreich über Python-Backend entfernt!", false);
+        } catch(e) {
+            console.error(e);
+            showToast("Fehler bei der Entfernung: " + e.message, true);
+        }
+
+        btn.innerHTML = '✨ Wasserzeichen entfernen';
         btn.disabled = false;
     };
