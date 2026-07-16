@@ -4,3 +4,7 @@ openai
 python-dotenv
 markdown
 gunicorn
+opencv-python
+numpy
+piexif
+Pillow
