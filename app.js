@@ -34,6 +34,7 @@ PACING_DELAY = int(os.environ.get("PACING_DELAY", "3"))
 gemini_client = OpenAI(api_key=GEMINI_API_KEY, base_url=GEMINI_BASE)
 
 def get_lm_studio_model(lm_studio_base):
+    """Helper to dynamically fetch the model currently loaded in LM Studio."""
     import urllib.request
     import json
     try:
@@ -46,6 +47,7 @@ def get_lm_studio_model(lm_studio_base):
         return "local-model"
 
 def map_model_name(model_name):
+    """Maps custom UI model names to actual Gemini API model IDs."""
     model_lower = model_name.lower()
     if '3.5-flash' in model_lower:
         return 'gemini-3.5-flash'
@@ -58,6 +60,7 @@ def map_model_name(model_name):
     return model_name
 
 def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1"):
+    """Core generator that calls either Gemini or LM Studio and handles rate limits."""
     import time
     import re
     
@@ -88,14 +91,21 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
             err_msg = str(e)
             if is_gemini and ("429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower()):
                 delay = None
+                
                 match1 = re.search(r"retry(?:ing)?\s+(?:in|after)\s+(\d+\.?\d*)\s*s", err_msg, re.IGNORECASE)
-                if match1: delay = int(float(match1.group(1))) + 1
+                if match1:
+                    delay = int(float(match1.group(1))) + 1
+                    
                 if not delay:
                     match2 = re.search(r"retryDelay[\'\"]?:\s*[\'\"]?(\d+)\s*s", err_msg, re.IGNORECASE)
-                    if match2: delay = int(match2.group(1)) + 1
+                    if match2:
+                        delay = int(match2.group(1)) + 1
+                        
                 if not delay:
                     match3 = re.search(r"retry.*\s+(\d+\.?\d*)\s*(?:seconds|sec|s)", err_msg, re.IGNORECASE)
-                    if match3: delay = int(float(match3.group(1))) + 1
+                    if match3:
+                        delay = int(float(match3.group(1))) + 1
+                
                 if not delay:
                     delay = base_delay * (2 ** attempt)
                     
@@ -115,6 +125,7 @@ def get_ai_response(messages, model, temperature=0.7, lm_studio_base="http://127
             print(f"[API ERROR] {val}")
     return result
 
+# --- FRONTEND ROUTES ---
 @app.route('/')
 def index():
     return send_file('index.html')
@@ -203,6 +214,7 @@ def generate_solution():
 
         yield f"data: {json.dumps({'event': 'log', 'message': '🚀 Level 3 (Overdrive): Starte volle 4-Agenten-Diskussion...'})}\n\n"
 
+        # 1. Expert Assembly
         yield f"data: {json.dumps({'event': 'log', 'message': '🧠 Rufe Expertengremium zusammen...'})}\n\n"
         prompt_exp = (
             f"Kontext: Das ist ein Prompt für eine Bild-KI.\n"
@@ -212,8 +224,10 @@ def generate_solution():
         
         exp_response = None
         for ev_type, ev_val in call_ai([{"role": "user", "content": prompt_exp}], temperature=0.3):
-            if ev_type == 'log': yield ev_val
-            elif ev_type == 'result': exp_response = ev_val
+            if ev_type == 'log':
+                yield ev_val
+            elif ev_type == 'result':
+                exp_response = ev_val
         
         if not exp_response:
             exp_response = "Lead Director, Lighting Specialist, Camera Operator, Art Director"
@@ -229,6 +243,7 @@ def generate_solution():
         experts_str = ", ".join(experts)
         yield f"data: {json.dumps({'event': 'experts', 'experts': experts, 'message': f'Gewählte Experten: {experts_str}'})}\n\n"
         
+        # 2. Lead Architect Draft
         if PACING_DELAY > 0 and model != 'lm-studio':
             yield f"data: {json.dumps({'event': 'log', 'message': f'⏳ Pause von {PACING_DELAY}s zur Ratenbegrenzungs-Schonung...'})}\n\n"
             time.sleep(PACING_DELAY)
@@ -238,14 +253,17 @@ def generate_solution():
         
         draft = None
         for ev_type, ev_val in call_ai([{"role": "system", "content": draft_sys}, {"role": "user", "content": f"Kontext:\n{context}"}], temperature=0.6):
-            if ev_type == 'log': yield ev_val
-            elif ev_type == 'result': draft = ev_val
+            if ev_type == 'log':
+                yield ev_val
+            elif ev_type == 'result':
+                draft = ev_val
                 
         if not draft:
             draft = "Fehler beim Erstellen des ersten Entwurfs."
             
         yield f"data: {json.dumps({'event': 'draft', 'content': draft, 'message': 'Entwurf erfolgreich erstellt.'})}\n\n"
         
+        # 3. Review Board
         if PACING_DELAY > 0 and model != 'lm-studio':
             yield f"data: {json.dumps({'event': 'log', 'message': f'⏳ Pause von {PACING_DELAY}s zur Ratenbegrenzungs-Schonung...'})}\n\n"
             time.sleep(PACING_DELAY)
@@ -263,8 +281,10 @@ def generate_solution():
             
             rev = None
             for ev_type, ev_val in call_ai([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], temperature=0.7):
-                if ev_type == 'log': yield ev_val
-                elif ev_type == 'result': rev = ev_val
+                if ev_type == 'log':
+                    yield ev_val
+                elif ev_type == 'result':
+                    rev = ev_val
             
             if rev:
                 reviews.append(f"### Gutachten vom {role}:\n{rev}\n")
@@ -272,6 +292,7 @@ def generate_solution():
             else:
                 yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ Fehler beim Feedback von {role}.'})}\n\n"
                 
+        # 4. Master Merge
         if PACING_DELAY > 0 and model != 'lm-studio':
             yield f"data: {json.dumps({'event': 'log', 'message': f'⏳ Pause von {PACING_DELAY}s zur Ratenbegrenzungs-Schonung...'})}\n\n"
             time.sleep(PACING_DELAY)
@@ -283,8 +304,10 @@ def generate_solution():
         
         final_concept = None
         for ev_type, ev_val in call_ai([{"role": "system", "content": merge_sys}, {"role": "user", "content": merge_user}], temperature=0.4):
-            if ev_type == 'log': yield ev_val
-            elif ev_type == 'result': final_concept = ev_val
+            if ev_type == 'log':
+                yield ev_val
+            elif ev_type == 'result':
+                final_concept = ev_val
                 
         if not final_concept:
             final_concept = draft
