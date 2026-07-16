@@ -29,6 +29,7 @@
                 <button class="nav-btn" onclick="switchTab('char')"><i class="fa-solid fa-user-astronaut"></i> Charakter & ID</button>
                 <button class="nav-btn" onclick="switchTab('edit')"><i class="fa-solid fa-eraser"></i> Edit & Inpaint</button>
                 <button class="nav-btn" onclick="switchTab('cinema')"><i class="fa-solid fa-film"></i> Cinema Edit</button>
+                <button class="nav-btn" onclick="switchTab('watermark')"><i class="fa-solid fa-droplet-slash"></i> Watermark Remover</button>
             </div>
         </div>
 
@@ -42,6 +43,19 @@
                     <i class="fa-solid fa-arrows-rotate"></i>
                 </button>
             </div>
+            <div style="padding: 0 10px; margin-bottom: 12px;">
+                <button class="btn btn-secondary" onclick="document.getElementById('apiSettings').style.display = document.getElementById('apiSettings').style.display === 'none' ? 'block' : 'none'" style="width:100%; justify-content:center; font-size:0.75rem;">
+                    <i class="fa-solid fa-network-wired"></i> Server Config
+                </button>
+                <div id="apiSettings" style="display:none; margin-top:10px; padding:10px; background:rgba(0,0,0,0.15); border-radius:6px; border:1px solid var(--border-color);">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;">LM Studio URL</label>
+                    <input type="text" id="apiUrl" placeholder="http://localhost:1234/v1" oninput="saveUrl(); debouncedCheckStatus()" style="width:100%; padding:6px; font-size:0.75rem; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-bottom:10px; margin-top:4px;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;">Lokales Modell</label>
+                    <select id="modelSelect" style="width:100%; padding:6px; font-size:0.75rem; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                        <option value="local-model">Aktuelles Modell</option>
+                    </select>
+                </div>
+            </div>
             
             <div style="padding: 0 10px;">
                 <label style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;">Design Theme</label>
@@ -51,6 +65,12 @@
                     <option value="theme-emerald">Emerald (Clean)</option>
                     <option value="theme-pink">Pink Punch (Pop)</option>
                 </select>
+            </div>
+            
+            <div style="padding: 15px 10px 0 10px;">
+                <button class="btn btn-secondary" style="width: 100%; border-color: rgba(239, 68, 68, 0.3); color: var(--danger); font-size: 0.8rem; justify-content: center;" onclick="if(confirm('Möchtest du wirklich alle Eingaben verwerfen und die Seite neu laden?')) { window.location.reload(); }">
+                    <i class="fa-solid fa-trash-can"></i> Alles zurücksetzen
+                </button>
             </div>
         </div>
     </aside>
@@ -63,40 +83,11 @@
                     <h1>Prompt Generator <span style="font-size:0.5em; background:var(--primary); padding:2px 8px; border-radius:4px; vertical-align:middle; margin-left:10px;">LOCAL AI</span></h1>
                     <p>High-Fidelity Prompt Engineering angetrieben durch dein lokales LM Studio.</p>
                 </div>
-                <div style="background:var(--bg-input); padding:4px; border-radius:8px; display:flex; gap:5px;">
+                <div style="background:var(--bg-input); padding:4px; border-radius:8px; display:flex; gap:5px; align-items:center;">
+                    <button class="btn btn-magic" style="font-size:0.75rem; padding:6px 12px;" onclick="randomizeForm()"><i class="fa-solid fa-shuffle"></i> Randomize</button>
+                    <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
                     <button id="modePhoto" class="btn btn-primary" style="font-size:0.75rem; padding:6px 12px;" onclick="setGenMode('photo')"><i class="fa-regular fa-image"></i> Foto</button>
                     <button id="modeVideo" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px;" onclick="setGenMode('video')"><i class="fa-solid fa-video"></i> Video</button>
-                </div>
-            </div>
-
-            <div class="smart-section">
-                <div class="card-title" style="margin-bottom:10px;"><i class="fa-solid fa-robot"></i> AI Assistant (Auto-Fill)</div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <textarea id="smartInput" class="smart-textarea" placeholder="Beschreibe deine Idee (z.B. 'Cyberpunk Frau im Regen mit Neonlicht')..."></textarea>
-                    <div style="display:flex; flex-direction:column; gap:8px; min-width:180px;">
-                        <button class="btn btn-magic" id="btnAutoFill" onclick="runAutoFill()">
-                            <span class="spinner" id="spinAuto"></span> <i class="fa-solid fa-bolt"></i> Auto-Fill Forms
-                        </button>
-                        <button class="btn btn-secondary" onclick="randomizeForm()" style="width:100%; justify-content:center;">
-                            <i class="fa-solid fa-shuffle"></i> Randomize
-                        </button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('apiSettings').style.display = document.getElementById('apiSettings').style.display === 'none' ? 'block' : 'none'" style="width:100%; justify-content:center; font-size:0.75rem;">
-                            <i class="fa-solid fa-network-wired"></i> Server Config
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="apiSettings" style="display:none; margin-top:15px; padding:15px; background:rgba(0,0,0,0.3); border-radius:8px;">
-                    <label>LM Studio Server URL (Localhost)</label>
-                    <input type="text" id="apiUrl" placeholder="http://localhost:1234/v1" oninput="saveUrl(); debouncedCheckStatus()">
-                    <div style="display:flex; gap:10px; margin-top:10px; align-items:center;">
-                         <select id="modelSelect" style="width:auto;">
-                            <option value="local-model">LM Studio (Aktuell geladenes Modell)</option>
-                         </select>
-                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; padding-left: 10px;">
-                            <i>Tipp: Stelle sicher, dass in LM Studio "CORS" aktiviert ist (standardmäßig an).</i>
-                         </p>
-                    </div>
                 </div>
             </div>
 
@@ -119,11 +110,15 @@
                             </select>
                         </div>
                         
-                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="useAutoBot" style="width: auto; margin: 0;">
-                            <label for="useAutoBot" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
-                                <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                        <div style="margin-bottom: 15px;">
+                            <label for="autoBotLevel" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                                <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> KI Eingriffs-Regler
                             </label>
+                            <select id="autoBotLevel" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                                <option value="1">Stufe 1 (Raw / Purist)</option>
+                                <option value="2">Stufe 2 (Balanced)</option>
+                                <option value="3" selected>Stufe 3 (Overdrive - 4 Agenten)</option>
+                            </select>
                         </div>
 
                         <button class="btn btn-primary" id="optimizeAiBtn" onclick="callLocalAI()">
@@ -306,11 +301,15 @@
                             </select>
                         </div>
                         
-                        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="useAutoBotEdit" style="width: auto; margin: 0;">
-                            <label for="useAutoBotEdit" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
-                                <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                        <div style="margin-bottom: 15px;">
+                            <label for="autoBotLevelEdit" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                                <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> KI Eingriffs-Regler
                             </label>
+                            <select id="autoBotLevelEdit" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                                <option value="1">Stufe 1 (Raw / Purist)</option>
+                                <option value="2">Stufe 2 (Balanced)</option>
+                                <option value="3" selected>Stufe 3 (Overdrive - 4 Agenten)</option>
+                            </select>
                         </div>
 
                         <div style="display: flex; gap: 10px;">
@@ -493,11 +492,15 @@
                         </select>
                     </div>
                     
-                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="useAutoBotCine" style="width: auto; margin: 0;">
-                        <label for="useAutoBotCine" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
-                            <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                    <div style="margin-bottom: 15px;">
+                        <label for="autoBotLevelCine" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                            <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> KI Eingriffs-Regler
                         </label>
+                        <select id="autoBotLevelCine" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                            <option value="1">Stufe 1 (Raw / Purist)</option>
+                            <option value="2">Stufe 2 (Balanced)</option>
+                            <option value="3" selected>Stufe 3 (Overdrive - 4 Agenten)</option>
+                        </select>
                     </div>
                     
                     <div style="display:flex; gap:10px; margin-top:10px;">
@@ -587,11 +590,15 @@
                         </select>
                     </div>
 
-                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="useAutoBotVeo" style="width: auto; margin: 0;">
-                        <label for="useAutoBotVeo" style="font-size: 0.8rem; color: var(--text-main); cursor: pointer;">
-                            <i class="fa-solid fa-robot" style="color: var(--primary);"></i> Auto Bot (4-Agenten Diskussion)
+                    <div style="margin-bottom: 15px;">
+                        <label for="autoBotLevelVeo" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                            <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> KI Eingriffs-Regler
                         </label>
+                        <select id="autoBotLevelVeo" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                            <option value="1">Stufe 1 (Raw / Purist)</option>
+                            <option value="2">Stufe 2 (Balanced)</option>
+                            <option value="3" selected>Stufe 3 (Overdrive - 4 Agenten)</option>
+                        </select>
                     </div>
 
                     <button class="btn btn-primary" id="veoAiBtn" onclick="generateVeoPrompt()" style="margin-top:15px; width:100%;">
@@ -900,6 +907,48 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="watermark" class="tab-content">
+            <div class="header">
+                <h1>Watermark Remover</h1>
+                <p>Entfernung des Gemini Sternchen-Wasserzeichens sowie unsichtbarer SynthID Metadaten via Python Backend.</p>
+            </div>
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Upload & Clean</div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Lade ein mit Gemini generiertes Bild hoch. Das Wasserzeichen unten rechts wird mathematisch perfekt entfernt.</p>
+                
+                <div style="border: 2px dashed var(--border-color); padding: 30px; text-align: center; border-radius: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.2); transition: all 0.3s;" id="wm-dropzone">
+                    <i class="fa-regular fa-image" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 15px;"></i>
+                    <p style="margin-bottom: 15px; color: var(--text-main);">Bild hier ablegen oder anklicken zum Auswählen</p>
+                    <input type="file" id="wm-file" accept="image/png, image/jpeg, image/webp" style="display: none;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('wm-file').click()">Datei auswählen</button>
+                </div>
+
+                <div style="margin: 20px 0; text-align: left; background: rgba(30, 38, 64, 0.4); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <label style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--text-main); cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="wm-remove-synthid" checked style="accent-color: var(--primary); transform: scale(1.2);">
+                        <span><strong>Google SynthID & C2PA Metadaten entfernen</strong> (bereinigt unsichtbare Marker für Plattformen wie Instagram)</span>
+                    </label>
+                </div>
+
+                <div id="wm-preview-container" style="display: none; text-align: center;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
+                        <div style="flex: 1; min-width: 300px;">
+                            <p style="font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; color: var(--text-muted);">Original</p>
+                            <img id="wm-img-original" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);">
+                        </div>
+                        <div style="flex: 1; min-width: 300px;">
+                            <p style="font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; color: var(--success);">Cleaned</p>
+                            <img id="wm-img-cleaned" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--success);">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button class="btn btn-primary" id="wm-process-btn" style="padding: 10px 20px; font-size: 1rem;" onclick="processWatermark()">✨ Wasserzeichen entfernen</button>
+                        <a id="wm-download-btn" class="btn btn-secondary" style="padding: 10px 20px; font-size: 1rem; display: none; text-decoration: none;" download="cleaned_image.png"><i class="fa-solid fa-download"></i> Download</a>
                     </div>
                 </div>
             </div>
