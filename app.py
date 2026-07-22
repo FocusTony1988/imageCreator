@@ -53,7 +53,11 @@ def get_lm_studio_model(lm_studio_base):
 def map_model_name(model_name):
     """Maps custom UI model names to actual Gemini API model IDs."""
     model_lower = model_name.lower()
-    if '3.5-flash' in model_lower:
+    if '3.6-flash' in model_lower:
+        return 'gemini-3.6-flash'
+    elif '3.5-flash-lite' in model_lower:
+        return 'gemini-3.5-flash-lite'
+    elif '3.5-flash' in model_lower:
         return 'gemini-3.5-flash'
     elif '2.5-flash' in model_lower:
         return 'gemini-2.5-flash'
@@ -148,7 +152,7 @@ def index():
 def optimize_goal():
     data = request.json
     raw_goal = data.get('goal', '')
-    model = data.get('model', 'gemini-3.5-flash')
+    model = data.get('model', 'gemini-3.5-flash-lite')
     sys_prompt = data.get('system_prompt', '')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
     
@@ -166,7 +170,7 @@ def optimize_goal():
 def generate_solution():
     data = request.json
     goal = data.get('goal', '')
-    model = data.get('model', 'gemini-3.5-flash')
+    model = data.get('model', 'gemini-3.5-flash-lite')
     sys_prompt = data.get('system_prompt', '')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
     level = str(data.get('level', '3'))

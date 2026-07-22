@@ -169,7 +169,7 @@
 const genConfig = [
       { type: 'header', label: '🧠 Quick Start: Auto-Bot', icon: 'fa-bolt', modes: ['photo', 'video'] },
       { type: 'textarea', id: 'quickBotIdea', label: 'Deine Bild-Idee', desc: 'Wird in einen englischen Basis-Prompt übersetzt.', placeholder: 'z.B. Ein roter Drache fliegt über eine brennende Burg...', modes: ['photo', 'video'] },
-      { type: 'select', id: 'quickBotModel', label: 'Modell für Auto-Bot', modes: ['photo', 'video'], options: [['Gemini 3.1 Flash Lite', 'gemini-3.1-flash-lite'], ['LM Studio (Lokal)', 'lm-studio']] },
+      { type: 'select', id: 'quickBotModel', label: 'Modell für Auto-Bot', modes: ['photo', 'video'], options: [['Gemini 3.5 Flash Lite (Standard)', 'gemini-3.5-flash-lite'], ['Gemini 3.6 Flash', 'gemini-3.6-flash'], ['Gemini 3.5 Flash', 'gemini-3.5-flash'], ['Gemini 3.1 Flash Lite', 'gemini-3.1-flash-lite'], ['Gemini 2.5 Flash', 'gemini-2.5-flash'], ['LM Studio (Lokal)', 'lm-studio']] },
       { type: 'button', id: 'btnQuickBot', label: '⚡ Basis-Prompt generieren', action: 'window.runQuickBot()', modes: ['photo', 'video'] },
       { type: 'textarea', id: 'quickBotResult', label: 'Generierter Basis-Prompt', desc: 'Wird als Basis-Element vor die Dropdowns gesetzt.', placeholder: 'Hier erscheint dein Basis-Prompt...', modes: ['photo', 'video'] },
       

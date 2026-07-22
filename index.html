@@ -103,9 +103,11 @@
                         <div style="margin-bottom: 12px;">
                             <label for="modelSelectMain" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
                             <select id="modelSelectMain" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
-                                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
-                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Standard)</option>
+                                <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                 <option value="lm-studio">LM Studio (Lokal)</option>
                             </select>
                         </div>
@@ -294,9 +296,11 @@
                         <div style="margin-bottom: 12px;">
                             <label for="modelSelectEdit" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">KI Modell wählen</label>
                             <select id="modelSelectEdit" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
-                                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
-                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Standard)</option>
+                                <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                                 <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                 <option value="lm-studio">LM Studio (Lokal)</option>
                             </select>
                         </div>
@@ -485,9 +489,11 @@
                     <div style="margin-top: 15px; margin-bottom: 12px;">
                         <label for="modelSelectCine" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
                         <select id="modelSelectCine" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
-                            <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Standard)</option>
+                            <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                             <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             <option value="lm-studio">LM Studio (Lokal)</option>
                         </select>
                     </div>
@@ -583,9 +589,11 @@
                     <div style="margin-top: 15px; margin-bottom: 12px;">
                         <label for="modelSelectVeo" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Modell wählen</label>
                         <select id="modelSelectVeo" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
-                            <option value="gemini-3.5-flash">Gemini 3.5 Flash (Standard)</option>
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Standard)</option>
+                            <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                             <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             <option value="lm-studio">LM Studio (Lokal)</option>
                         </select>
                     </div>
@@ -899,7 +907,11 @@
                             </div>
                             <div style="display:flex; gap:10px; align-items:center;">
                                 <select id="camDirAutoBotModel" style="padding:6px; border-radius:6px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); font-size:0.8rem;">
+                                    <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash Lite (Standard)</option>
+                                    <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
                                     <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                     <option value="lm-studio">LM Studio (Lokal)</option>
                                 </select>
                                 <button class="btn btn-primary" id="btnCamDirAutoBot" onclick="window.runCamDirAutoBot()" style="padding:6px 15px; font-size:0.8rem; font-weight:bold;">

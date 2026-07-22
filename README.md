@@ -33,7 +33,7 @@ Every generation results in a structured JSON payload containing workflow metada
 
 * **Frontend:** Pure, highly optimized Vanilla JavaScript and CSS. Features dynamic DOM manipulation, real-time SSE streaming logs, and glassmorphism UI aesthetics.
 * **Backend:** Python (Flask) with asynchronous streaming endpoints.
-* **AI Engine:** Google Gemini API (supporting `gemini-1.5-flash`, `gemini-1.5-pro`, and lightweight models) integrated for agentic reasoning and vision tasks.
+* **AI Engine:** Google Gemini API (supporting `gemini-3.6-flash`, `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.1-flash-lite`, etc.) integrated for agentic reasoning and vision tasks.
 * **Image Processing:** OpenCV (`cv2`) and NumPy for algorithmic image manipulation.
 
 ---
