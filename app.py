@@ -166,6 +166,92 @@ def optimize_goal():
     optimized = get_ai_response(messages, model=model, temperature=0.5, lm_studio_base=lm_url)
     return jsonify({"optimized_goal": optimized if optimized else ""})
 
+@app.route('/api/copilot', methods=['POST'])
+def run_copilot():
+    data = request.json
+    idea = data.get('idea', '')
+    lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+    
+    if not idea:
+        return jsonify({"error": "Keine Idee angegeben"}), 400
+        
+    print(f"[Co-Pilot] Analyzing idea with gemini-3.5-flash-lite: {idea[:60]}...")
+    
+    sys_prompt = (
+        "Du bist der KI-Co-Pilot für ein professionelles Bild- und Video-Prompt-Engineering-Tool. "
+        "Deine Aufgabe ist es, die Idee des Nutzers vollständig zu analysieren, festzustellen, ob eine Person im Mittelpunkt steht, "
+        "einen sehr ausführlichen, hochauflösenden englischen Gesamt-Prompt (baseConcept) zu formulieren (der alle Details, Titel, Magazin-Cover, Stimmung, Atmosphäre, Hintergrund und Blicke enthält), "
+        "und die perfekten Dropdown-Parameter für Kamera, Optik, Licht, Komposition und Oberflächen-Physik auszuwählen. "
+        "Antworte AUSSCHLIESSLICH in folgendem gültigen JSON-Format (keine Markdown-Codeblocks, kein Fließtext davor oder danach):\n"
+        "{\n"
+        "  \"hasPerson\": true oder false,\n"
+        "  \"baseConcept\": \"Vollständige, extrem detaillierte englische Übersetzung und Ausformulierung der gesamten Nutzer-Idee inklusive Magazin-Titeln, Stimmung, Umgebungsdetails und Blickkontakt.\",\n"
+        "  \"reasoning\": \"Eine kurze, begeisternde Erklärung (2-3 Sätze auf Deutsch) für Anfänger, warum diese Kamera- und Lichtwerte gewählt wurden.\",\n"
+        "  \"fields\": {\n"
+        "    \"gender\": \"woman|man|non-binary person|android robot\",\n"
+        "    \"ageGroup\": \"20 years old, young adult|30 years old\",\n"
+        "    \"ethnicity\": \"East Asian|Scandinavian|American|Germanic\",\n"
+        "    \"bodyType\": \"slender model physique|athletic toned body\",\n"
+        "    \"hairColor\": \"blonde|brunette|black|ginger red\",\n"
+        "    \"expression\": \"neutral cool expression|happy beaming smile\",\n"
+        "    \"clothing\": \"black leather jacket|casual t-shirt and jeans\",\n"
+        "    \"action\": \"Vollständige englische Beschreibung der gesamten Handlung, Pose, Magazin-Titel und Blickkontakt\",\n"
+        "    \"sceneType\": \"cinematic realism|cyberpunk sci-fi|high fantasy|dark horror atmosphere\",\n"
+        "    \"location\": \"rainy Tokyo street|skyscraper office|pristine tropical beach|San Francisco cityscape\",\n"
+        "    \"lighting\": \"dramatic cinematic lighting|soft natural window light|neon cyan and magenta lighting\",\n"
+        "    \"lightingSetup\": \"3-point studio lighting setup, balanced key and fill|strong rim light, backlit silhouette, glowing edges|chiaroscuro lighting, deep dramatic shadows, Caravaggio style|gobo light modifier, Venetian blind shadow patterns|neon split lighting, dual tone cyan and magenta glow\",\n"
+        "    \"weather\": \"heavy rain|clear sunny sky|thick fog\",\n"
+        "    \"focalLength\": \"14mm ultra-wide lens, dynamic perspective distortion|35mm prime lens, natural narrative perspective|50mm standard lens, true to life human vision|85mm portrait lens, flattering compression|200mm telephoto lens, background compression|2x anamorphic lens, oval bokeh, ultra-wide cinema ratio\",\n"
+        "    \"apertureDoF\": \"f/1.2 aperture, razor-thin depth of field, sharp focus on subject|f/1.8 aperture, creamy blurred background bokeh|f/2.8 aperture, clean subject separation|f/8 aperture, deep focus, sharp background details\",\n"
+        "    \"composition\": \"rule of thirds composition|centered symmetrical composition, Wes Anderson style|golden ratio spiral composition|dynamic leading lines pointing to subject|minimalist composition, vast negative space|frame within a frame composition\",\n"
+        "    \"colorGrading\": \"Teal and Orange color grading, Hollywood blockbuster palette|soft pastel color palette, gentle muted tones|monochromatic black and white with vibrant color accent|muted organic earth tones, natural film palette|saturated neon RGB color grading, high contrast\",\n"
+        "    \"vfxParticles\": \"floating embers, glowing sparks, atmospheric heat|floating dust motes in light rays, atmospheric particles|glowing bioluminescent spores, magical particles|cinematic lens flare, anamorphic blue glare|dense volumetric fog, atmospheric haze, smoke drift\",\n"
+        "    \"surfaceCondition\": \"rain-slicked wet surface, glossy water reflections|glistening skin sheen, subtle sweat droplets|frost crystals, frozen texture, icy sheen|water droplets on camera lens, optical distortion\",\n"
+        "    \"detailLevel\": \"8k raw photo, extreme detail, no smoothing, uncompressed|16k uncompressed raw photo, hyper-detailed texture map|microscopic detail level, extreme texture precision\",\n"
+        "    \"skinPhysics\": \"subsurface scattering, translucent skin, realistic epidermis|subsurface skin scattering, natural epidermal sheen, realistic pores|sweaty glossy skin texture, intense specular highlights|porcelain skin|matte velvet skin finish, soft touch texture|natural freckles, realistic skin pigmentation, beauty marks\",\n"
+        "    \"microDetails\": \"visible pores, vellus hair, natural skin texture imperfections|vellus peach fuzz hair, micro skin pores, natural imperfections|natural expression lines, subtle crow's feet, micro wrinkles|microscopic iris filaments, vibrant eye catchlight reflections\",\n"
+        "    \"vfxParticles\": \"floating embers, glowing sparks, atmospheric heat|floating dust motes in light rays, atmospheric particles|glowing bioluminescent spores, magical particles|refractive heat shimmer, mirage distortion, atmospheric heat haze|cinematic lens flare, anamorphic blue glare|swirling backlit snowflakes, icy air motes|slight chromatic aberration, optical prism fringing, lens distortion|dense volumetric fog, atmospheric haze, smoke drift\",\n"
+        "    \"surfaceCondition\": \"rain-slicked wet surface, glossy water reflections|glistening morning dew droplets, wet surface sheen|glistening skin sheen, subtle sweat droplets|splattered mud droplets, gritty surface texture|frost crystals, frozen texture, icy sheen|mirror-like water puddle reflections, wet asphalt|water droplets on camera lens, optical distortion\",\n"
+        "    \"lightingSetup\": \"3-point studio lighting setup, balanced key and fill|strong rim light, backlit silhouette, glowing edges|intense volumetric backlighting, glowing silhouette edges|warm flickering candlelight, deep orange ambient glow|chiaroscuro lighting, deep dramatic shadows, Caravaggio style|gobo light modifier, Venetian blind shadow patterns|neon split lighting, dual tone cyan and magenta glow|classic butterfly beauty lighting, flattering chin shadow\",\n"
+        "    \"sensorPhysics\": \"medium format CCD sensor crispness, ultra dynamic range|cctv footage, phone camera noise, raw sensor data|zero denoising, grainy texture, authentic iso noise|authentic 35mm film grain, analog texture|heavy 16mm vintage film grain, retro cinema noise|heavy film grain\",\n"
+        "    \"opticsLogic\": \"24mm lens, f/8 aperture, deep depth of field, everything in focus|85mm lens, f/1.8 aperture, creamy bokeh background|Petzval vintage lens, swirling background bokeh|tilt-shift lens effect, miniature model depth of field|split-diopter shot, dual focus foreground and background|softar diffusion filter, creamy skin glow|macro lens, shallow depth of field\",\n"
+        "    \"lightingLogic\": \"direct neutral white flash, harsh shadows, amateur photography|fashion ringlight illumination, halo eye catchlights|hard direct on-camera flash, stark shadows, 90s party snap|soft diffused strobe flash, gentle wrap-around light|no studio lighting, ambient light only|professional studio lighting setup\",\n"
+        "    \"colorFidelity\": \"raw color tones, flat profile, low contrast, desaturated|warm Kodak Gold analog film tones, golden highlights|vibrant Fujifilm Velvia saturated landscape colors|gritty bleach bypass color grading, desaturated high contrast|vibrant Technicolor 3-strip vintage color palette|vivid colors, high saturation, instagram filter|black and white, monochrome\",\n"
+        "    \"filmStock\": \"Kodak Portra 400 film grain|Cinestill 800T halation|Fujifilm Velvia 50|digital crisp 8k\"\n"
+        "  }\n"
+        "}\n"
+        "Kürze nichts ab! Die vollständige Idee muss im baseConcept und action-Feld enthalten sein."
+    )
+    
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": f"Idee des Nutzers:\n{idea}"}
+    ]
+    
+    res_text = get_ai_response(messages, model='gemini-3.5-flash-lite', temperature=0.3, lm_studio_base=lm_url)
+    
+    if not res_text:
+        return jsonify({"error": "Leere Antwort vom KI Co-Pilot."}), 500
+        
+    try:
+        clean_json = res_text.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            
+        parsed = json.loads(clean_json)
+        return jsonify(parsed)
+    except Exception as e:
+        print(f"[Co-Pilot Error] Could not parse JSON: {e}\nRaw output: {res_text}")
+        return jsonify({
+            "reasoning": "Der Co-Pilot hat deine Idee verarbeitet und grundlegende Einstellungen gewählt.",
+            "fields": {
+                "sceneType": "cinematic realism",
+                "detailLevel": "8k raw photo, extreme detail, no smoothing, uncompressed"
+            }
+        })
+
 @app.route('/api/generate', methods=['POST'])
 def generate_solution():
     data = request.json

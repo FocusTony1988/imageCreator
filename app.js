@@ -170,7 +170,6 @@ const genConfig = [
       { type: 'header', label: '🧠 Quick Start: Auto-Bot', icon: 'fa-bolt', modes: ['photo', 'video'] },
       { type: 'textarea', id: 'quickBotIdea', label: 'Deine Bild-Idee', desc: 'Wird in einen englischen Basis-Prompt übersetzt.', placeholder: 'z.B. Ein roter Drache fliegt über eine brennende Burg...', modes: ['photo', 'video'] },
       { type: 'select', id: 'quickBotModel', label: 'Modell für Auto-Bot', modes: ['photo', 'video'], options: [['Gemini 3.5 Flash Lite (Standard)', 'gemini-3.5-flash-lite'], ['Gemini 3.6 Flash', 'gemini-3.6-flash'], ['Gemini 3.5 Flash', 'gemini-3.5-flash'], ['Gemini 3.1 Flash Lite', 'gemini-3.1-flash-lite'], ['Gemini 2.5 Flash', 'gemini-2.5-flash'], ['LM Studio (Lokal)', 'lm-studio']] },
-      { type: 'button', id: 'btnQuickBot', label: '⚡ Basis-Prompt generieren', action: 'window.runQuickBot()', modes: ['photo', 'video'] },
       { type: 'textarea', id: 'quickBotResult', label: 'Generierter Basis-Prompt', desc: 'Wird als Basis-Element vor die Dropdowns gesetzt.', placeholder: 'Hier erscheint dein Basis-Prompt...', modes: ['photo', 'video'] },
       
       { type: 'header', label: 'Hauptmotiv: Person', icon: 'fa-user', modes: ['photo', 'video'] },
@@ -184,20 +183,20 @@ const genConfig = [
       { type: 'select', id: 'hairColor', label: 'Haare', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Blond','blonde'],['Brunette','brunette'],['Schwarz','black'],['Rot (Ingwer)','ginger red'],['Platinweiß','platinum white'],['Grau','grey'],['Bunt (Pastell)','pastel colored'],['Neon','neon glowing hair'],['Glatze','bald']] },
       { type: 'select', id: 'hairStyle', label: 'Frisur', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Lang & Glatt','long straight hair'],['Kurz (Pixie)','short pixie cut'],['Locken (Voluminös)','voluminous curly hair'],['Wellig','wavy hair'],['Pferdeschwanz','high ponytail'],['Bob','bob cut'],['Undercut','undercut'],['Messy Bun','messy bun'],['Nass Look','wet look hair']] },
       { type: 'select', id: 'eyeColor', label: 'Augen', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Kristallblau','crystal blue'],['Smaragdgrün','emerald green'],['Tiefbraun','deep brown'],['Haselnuss','hazel'],['Stahlgrau','steel grey'],['Violett','violet'],['Leuchtend (Cyber)','glowing cybernetic']] },
-      { type: 'select', id: 'expression', label: 'Ausdruck', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Neutral/Cool','neutral cool expression'],['Verliebt/Romantisch','romantic loving gaze'],['Glücklich/Strahlend','happy beaming smile'],['Ernst/Fokussiert','serious focused look'],['Wütend/Intensiv','angry intense glare'],['Traurig/Melancholisch','sad melancholic'],['Überrascht','surprised expression'],['Verträumt','dreamy look'],['Verführerisch','seductive gaze']] },
-      { type: 'select', id: 'clothing', label: 'Kleidung', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Bikini / Swimwear','bikini swimwear'],['Casual (T-Shirt/Jeans)','casual t-shirt and jeans'],['Streetwear (Hoodie)','oversized hoodie streetwear'],['Business Anzug','tailored business suit'],['Abendkleid (Gala)','elegant evening gown'],['Lederjacke (Edgy)','black leather jacket'],['Sci-Fi Rüstung','futuristic sci-fi armor'],['Techwear','cyberpunk techwear'],['Mittelalter Robe','medieval robes'],['Sportbekleidung','active sportswear'],['Haute Couture','avant-garde haute couture']] },
+      { type: 'select', id: 'expression', label: 'Ausdruck', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Neutral/Cool','neutral cool expression'],['Intellektuell / Nachdenklich','intellectual thoughtful gaze, deep focused eyes'],['Verliebt/Romantisch','romantic loving gaze'],['Glücklich/Strahlend','happy beaming smile'],['Ernst/Fokussiert','serious focused look'],['Wütend/Intensiv','angry intense glare'],['Mystisch / Geheimnisvoll','mysterious enigmatic look, subtle smile'],['Traurig/Melancholisch','sad melancholic'],['Überrascht','surprised expression'],['Verträumt','dreamy look'],['Verführerisch','seductive gaze']] },
+      { type: 'select', id: 'clothing', label: 'Kleidung', parent: 'describePerson', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Bikini / Swimwear','bikini swimwear'],['Casual (T-Shirt/Jeans)','casual t-shirt and jeans'],['Streetwear (Hoodie)','oversized hoodie streetwear'],['Business Anzug','tailored business suit'],['Abendkleid (Gala)','elegant evening gown'],['Lederjacke (Edgy)','black leather jacket'],['Sci-Fi Rüstung','futuristic sci-fi armor'],['Cyber-Suit (Carbon/Neon)','glowing neon cyberpunk suit, sleek carbon fiber'],['Techwear','cyberpunk techwear'],['Mittelalter Robe','medieval robes'],['Sportbekleidung','active sportswear'],['Seiden-Robe (Translucent)','flowing silk robe, translucent fabric'],['Haute Couture','avant-garde haute couture']] },
       
-      // Neues, erweitertes Feld für ästhetisch-erotischere Bikini-Modifikationen
       { type: 'select', id: 'bikiniStyle', label: 'Bikini Schnitt & Style', parent: 'describePerson', modes: ['photo', 'video'], options: [
           ['Standard / Klassisch', ''],
           ['String Bikini (Schmal)', 'micro string bikini, cheeky cut'],
           ['Tanga / Thong Bikini (Fokus Rückseite)', 'thong bikini bottom, revealing cut'],
           ['Nasser Bikini (Sinnlicher Wet-Look)', 'wet translucent bikini, water droplets on skin'],
           ['Latex / Vinyl Bikini (Glänzend)', 'shiny metallic vinyl bikini, glossy finish'],
-          ['Monokini (Tiefe Ausschnitte)', 'revealing cutout monokini']
+          ['Monokini (Tiefe Ausschnitte)', 'revealing cutout monokini'],
+          ['High-Cut Vintage 80s Swimsuit', '80s high-cut swimsuit, glamorous beach cut']
       ] },
       
-      { type: 'textarea', id: 'action', label: 'Handlung / Pose', parent: 'describePerson', modes: ['photo', 'video'], placeholder: 'Was macht die Person genau? (z.B. "sitzt am Fenster und trinkt Kaffee", "rennt durch den Regen")...' },
+      { type: 'textarea', id: 'action', label: 'Handlung / Pose', parent: 'describePerson', modes: ['photo', 'video'], placeholder: 'Was macht die Person genau? (z.B. "sitzt am Fenster und trinkt Kaffee", "rennte durch den Regen")...' },
       
       { type: 'header', label: 'Tiere & Kreaturen', icon: 'fa-paw', modes: ['photo', 'video'] },
       { type: 'checkbox', id: 'describeAnimal', label: 'Tier / Kreatur hinzufügen', default: false, modes: ['photo', 'video'] },
@@ -213,28 +212,35 @@ const genConfig = [
 
       { type: 'header', label: 'Environment & Mood', icon: 'fa-earth-americas', modes: ['photo', 'video'] },
       { type: 'select', id: 'sceneType', label: 'Genre / Stil', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Cinematic Realism (Film)','cinematic realism'],['Cyberpunk / Sci-Fi','cyberpunk sci-fi'],['High Fantasy','high fantasy'],['Dark Horror','dark horror atmosphere'],['Film Noir (B&W)','film noir black and white'],['Steampunk','steampunk aesthetic'],['National Geographic (Doku)','documentary photography'],['Vintage 80s/90s','vintage retro aesthetic'],['Landschaftsfotografie','landscape photography'],['Editorial / Fashion','high fashion editorial'],['Weltraum / Space','outer space sci-fi'],['Unterwasser','underwater scene'],['Post-Apokalyptisch','post-apocalyptic world'],['Surrealismus','dreamy surrealism']] },
-      { type: 'select', id: 'location', label: 'Ort (Location)', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Luxus-Apartment (Innen)','luxury modern apartment'],['Schlafzimmer (Gemütlich)','cozy bedroom'],['Küche (Chef)','professional kitchen'],['Badezimmer (Spa)','luxury spa bathroom'],['Büro (Wolkenkratzer)','skyscraper office'],['Nachtclub (Neon)','neon nightclub'],['Supermarkt','supermarket aisle'],['Museum / Galerie','art gallery'],['Verlassene Ruinen','abandoned ruins'],['Dachterrasse (Nacht)','rooftop terrace at night'],['U-Bahn Station','gritty subway station'],['Tropischer Strand','pristine tropical beach'],['Verschneite Berge','snowy mountain peak'],['Futuristisches Labor','sci-fi laboratory'],['Raumschiff','spaceship interior'],['New York Straße','busy NYC street'],['Tokio (Regen)','rainy Tokyo street'],['Waldlichtung','mystical forest glade'],['Wüste','vast desert dunes'],['Weißes Studio (Clean)','clean white infinity studio']] },
+      { type: 'select', id: 'location', label: 'Ort (Location)', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Luxus-Apartment (Innen)','luxury modern apartment'],['Schlafzimmer (Gemütlich)','cozy bedroom'],['Küche (Chef)','professional kitchen'],['Badezimmer (Spa)','luxury spa bathroom'],['Büro (Wolkenkratzer)','skyscraper office'],['Cyberpunk Ramen-Bar / Gasse','neon-lit cyberpunk ramen bar, rain-soaked alley'],['Nachtclub (Neon)','neon nightclub'],['Gotische Kathedrale','gothic cathedral interior, stained glass window light'],['Dachterrasse (Penthouse Nacht)','futuristic neon penthouse rooftop terrace at night'],['U-Bahn Station (Verlassen)','subway tunnel with flickering fluorescent lights'],['Tropischer Strand','pristine tropical beach'],['Verschneite Berge','snowy mountain peak'],['Futuristisches Labor','sci-fi laboratory'],['Raumschiff','spaceship interior'],['New York Straße','busy NYC street'],['Tokio (Regen)','rainy Tokyo street'],['Waldlichtung','mystical forest glade'],['Wüste','vast desert dunes'],['Unterwasser Korallenriff','vibrant underwater coral reef with shimmering water caustic light'],['Weißes Studio (Clean)','clean white infinity studio']] },
       { type: 'select', id: 'era', label: 'Zeit / Ära', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Modern (Heute)','modern day'],['Nahe Zukunft (2030)','near future 2030'],['Cyberpunk Zukunft (2077)','year 2077 cyberpunk'],['Y2K (2000er)','early 2000s Y2K aesthetic'],['90er Jahre','1990s aesthetic'],['80er Jahre (Synthwave)','1980s synthwave style'],['70er Jahre (Retro)','1970s retro'],['60er Jahre','1960s style'],['Viktorianisch (1800s)','Victorian era'],['Mittelalter','medieval era'],['Antike','ancient history']] },
-      { type: 'select', id: 'lighting', label: 'Lichtsetzung', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Cinematic (Dramatisch)','dramatic cinematic lighting'],['Soft Window Light','soft natural window light'],['Golden Hour','golden hour sunlight'],['Volumetrisch (Nebel)','volumetric god rays'],['Neon (Cyberpunk)','neon cyan and magenta lighting'],['Dark / Moody','dark moody low-key lighting'],['Studio Softbox','professional studio softbox'],['Rembrandt','Rembrandt lighting'],['Hartes Sonnenlicht','harsh sunlight']] },
-      { type: 'select', id: 'weather', label: 'Wetter / Atmosphäre', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Sonnig Klar','clear sunny sky'],['Regnerisch','heavy rain'],['Gewitter','stormy lightning'],['Schnee','heavy snow'],['Neblig','thick fog'],['Bewölkt','overcast sky'],['Staubig','dusty atmosphere']] },
+      { type: 'select', id: 'lighting', label: 'Lichtsetzung', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Cinematic (Dramatisch)','dramatic cinematic lighting'],['Soft Window Light','soft natural window light'],['Golden Hour (Abendlicht)','golden hour sunlight'],['Volumetrisch (God Rays)','intense volumetric god rays streaming through dust'],['Neon Split (Cyan & Magenta)','neon split lighting, dual tone cyan and magenta glow'],['Biolumineszent (Eigenlicht)','ethereal bioluminescent ambient light'],['Dark / Moody','dark moody low-key lighting'],['Studio Softbox','professional studio softbox'],['Rembrandt','Rembrandt lighting'],['Hartes Sonnenlicht','harsh sunlight']] },
+      { type: 'select', id: 'weather', label: 'Wetter / Atmosphäre', modes: ['photo', 'video'], hasManual: true, options: [['Bitte wählen',''],['Sonnig Klar','clear sunny sky'],['Regnerisch (Nass)','heavy rain'],['Gewitter','stormy lightning'],['Schnee','heavy snow'],['Neblig','thick fog'],['Asche-Regen (Silent Hill)','falling volcanic ash, hazy dark atmosphere'],['Sandsturm','dense red sandstorm, hazy desert wind'],['Bewölkt','overcast sky'],['Staubig','dusty atmosphere']] },
       
       { type: 'header', label: 'High-End Physics & Optics', icon: 'fa-microchip', modes: ['photo', 'video'] },
-      { type: 'select', id: 'detailLevel', label: 'Detailgrad (Fidelity)', desc: 'Pixeldichte und KI-Glättung', modes: ['photo', 'video'], options: [['Standard',''],['8K RAW / High Fidelity','8k raw photo, extreme detail, no smoothing, uncompressed'],['4K Sharp','4k sharp focus'],['Soft / Painterly','soft painterly style']] },
-      { type: 'select', id: 'skinPhysics', label: 'Hautoberfläche', desc: 'Lichtverhalten auf Haut', modes: ['photo', 'video'], options: [['Standard',''],['Sub-surface scattering (SSS)','subsurface scattering, translucent skin, realistic epidermis'],['Porcelain (Glatt)','porcelain skin'],['Rough / Weathered','rough weathered skin texture']] },
-      { type: 'select', id: 'microDetails', label: 'Mikro-Details', desc: 'Erhöht Realismus', modes: ['photo', 'video'], options: [['Standard',''],['Pores & Vellus Hair','visible pores, vellus hair, natural skin texture imperfections'],['Perfect Skin','airbrushed perfect skin']] },
-      { type: 'select', id: 'sensorPhysics', label: 'Sensor-Physik', desc: 'Bildrauschen & Realismus', modes: ['photo', 'video'], options: [['Digital Clean',''],['CMOS Mobile Noise','cctv footage, phone camera noise, raw sensor data'],['Zero Denoising','zero denoising, grainy texture, authentic iso noise'],['Film Grain','heavy film grain']] },
-      { type: 'select', id: 'opticsLogic', label: 'Optik / Fokus', desc: 'Tiefenschärfe Simulation', modes: ['photo', 'video'], options: [['Standard',''],['24mm Wide / f/8 Deep Focus','24mm lens, f/8 aperture, deep depth of field, everything in focus'],['85mm Portrait / f/1.8 Bokeh','85mm lens, f/1.8 aperture, creamy bokeh background'],['Macro / Shallow','macro lens, shallow depth of field']] },
-      { type: 'select', id: 'lightingLogic', label: 'Lichtlogik (Flash)', desc: 'Vermeidet KI-Glow', modes: ['photo', 'video'], options: [['Standard',''],['Direct Neutral Flash','direct neutral white flash, harsh shadows, amateur photography'],['No Studio / Natural','no studio lighting, ambient light only'],['Pro Studio','professional studio lighting setup']] },
-      { type: 'select', id: 'colorFidelity', label: 'Farbtreue', desc: 'Sättigung & Grading', modes: ['photo', 'video'], options: [['Standard RGB',''],['Raw Tones / Flat','raw color tones, flat profile, low contrast, desaturated'],['Vivid / Instagram','vivid colors, high saturation, instagram filter'],['Monochrome','black and white, monochrome']] },
-
+      { type: 'select', id: 'detailLevel', label: 'Detailgrad (Fidelity)', desc: 'Pixeldichte und KI-Glättung', modes: ['photo', 'video'], options: [['Standard',''],['8K RAW / High Fidelity','8k raw photo, extreme detail, no smoothing, uncompressed'],['16K Ultra-RAW (Hyper-Detail)','16k uncompressed raw photo, hyper-detailed texture map'],['Mikroskopische Präzision (Macro Fidelity)','microscopic detail level, extreme texture precision'],['4K Sharp','4k sharp focus'],['Analog Soft-Focus (Traumhaft)','vintage soft diffusion filter, dreamy glow'],['Soft / Painterly','soft painterly style']] },
+      { type: 'select', id: 'skinPhysics', label: 'Hautoberfläche', desc: 'Lichtverhalten auf Haut', modes: ['photo', 'video'], options: [['Standard',''],['Sub-surface scattering (SSS)','subsurface scattering, translucent skin, realistic epidermis'],['Epidermaler Glanz & Poren','subsurface skin scattering, natural epidermal sheen, realistic pores'],['Öl & Schweiß Glanz (Glossy Sweaty)','sweaty glossy skin texture, intense specular highlights'],['Porcelain (Glatt)','porcelain skin'],['Matte & Samtig (Velvet Finish)','matte velvet skin finish, soft touch texture'],['Sommersprossen & Hautmale','natural freckles, realistic skin pigmentation, beauty marks'],['Rough / Weathered','rough weathered skin texture']] },
+      { type: 'select', id: 'microDetails', label: 'Mikro-Details', desc: 'Erhöht Realismus', modes: ['photo', 'video'], options: [['Standard',''],['Pores & Vellus Hair','visible pores, vellus hair, natural skin texture imperfections'],['Pfirsichflaum & Hautporen','vellus peach fuzz hair, micro skin pores, natural imperfections'],['Hautfalten & Ausdruckslinien','natural expression lines, subtle crow\'s feet, micro wrinkles'],['Irisfasern & Augenreflexion','microscopic iris filaments, vibrant eye catchlight reflections'],['Perfect Skin','airbrushed perfect skin']] },
+      { type: 'select', id: 'vfxParticles', label: 'VFX & Partikel', desc: 'Partikel- & Atmos-Effekte', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Funkenflug (Floating Embers)','floating embers, glowing sparks, atmospheric heat'],['Raum-Staub (Floating Dust)','floating dust motes in light rays, atmospheric particles'],['Biolumineszenz (Sporen)','glowing bioluminescent spores, magical particles'],['Hitze-Flimmern (Mirage Shimmer)','refractive heat shimmer, mirage distortion, atmospheric heat haze'],['Lens Flare (Anamorph Blau)','cinematic lens flare, anamorphic blue glare'],['Schneegestöber (Backlit Snow)','swirling backlit snowflakes, icy air motes'],['Farbsäume / Prisma (Chromatic Aberration)','slight chromatic aberration, optical prism fringing, lens distortion'],['Rauch & Nebel (Volumetric Haze)','dense volumetric fog, atmospheric haze, smoke drift']] },
+      { type: 'select', id: 'surfaceCondition', label: 'Oberflächen-Physik', desc: 'Feuchtigkeit & Textur', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Nass geregnet (Rain-Slicked)','rain-slicked wet surface, glossy water reflections'],['Tautropfen (Morning Dew)','glistening morning dew droplets, wet surface sheen'],['Schweiß & Glanz (Glistening Skin)','glistening skin sheen, subtle sweat droplets'],['Schlamm & Spritzer (Mud Splatters)','splattered mud droplets, gritty surface texture'],['Frost & Eiskristalle (Ice Crystals)','frost crystals, frozen texture, icy sheen'],['Spiegelnde Pfützen (Puddle Mirror)','mirror-like water puddle reflections, wet asphalt'],['Regentropfen auf Linse (Lens Droplets)','water droplets on camera lens, optical distortion']] },
+      { type: 'select', id: 'lightingSetup', label: 'Licht-Architektur', desc: 'Lichtformung & Schatten', modes: ['photo', 'video'], options: [['Bitte wählen',''],['3-Punkt Studio (Key, Fill, Rim)','3-point studio lighting setup, balanced key and fill'],['Kantenlicht (Rim / Hair Light)','strong rim light, backlit silhouette, glowing edges'],['Volumetrisches Gegenlicht (Backlight)','intense volumetric backlighting, glowing silhouette edges'],['Kerzenlicht / Kamin (Warm Flame)','warm flickering candlelight, deep orange ambient glow'],['Chiaroscuro (Starker Kontrast)','chiaroscuro lighting, deep dramatic shadows, Caravaggio style'],['Gobo Jalousie-Schatten (Window Shadows)','gobo light modifier, Venetian blind shadow patterns'],['Neon Split (Cyan & Magenta)','neon split lighting, dual tone cyan and magenta glow'],['Butterfly Lighting (Beauty Key)','classic butterfly beauty lighting, flattering chin shadow']] },
+      { type: 'select', id: 'sensorPhysics', label: 'Sensor-Physik', desc: 'Bildrauschen & Realismus', modes: ['photo', 'video'], options: [['Digital Clean',''],['Mittelformat CCD (Hasselblad Crisp)','medium format CCD sensor crispness, ultra dynamic range'],['CMOS Mobile Noise','cctv footage, phone camera noise, raw sensor data'],['Zero Denoising','zero denoising, grainy texture, authentic iso noise'],['Analog 35mm Grain (Kodak)','authentic 35mm film grain, analog texture'],['Analog 16mm Grain (Retro Cinema)','heavy 16mm vintage film grain, retro cinema noise'],['Film Grain','heavy film grain']] },
+      { type: 'select', id: 'opticsLogic', label: 'Optik / Fokus', desc: 'Tiefenschärfe Simulation', modes: ['photo', 'video'], options: [['Standard',''],['24mm Wide / f/8 Deep Focus','24mm lens, f/8 aperture, deep depth of field, everything in focus'],['85mm Portrait / f/1.8 Bokeh','85mm lens, f/1.8 aperture, creamy bokeh background'],['Petzval Swirling Bokeh (Vintage Lens)','Petzval vintage lens, swirling background bokeh'],['Tilt-Shift (Miniatur-Effekt)','tilt-shift lens effect, miniature model depth of field'],['Split-Diopter (Doppel-Fokus)','split-diopter shot, dual focus foreground and background'],['Soft Focus Diffusion (Hasselblad Softar)','softar diffusion filter, creamy skin glow'],['Macro / Shallow','macro lens, shallow depth of field']] },
+      { type: 'select', id: 'lightingLogic', label: 'Lichtlogik (Flash)', desc: 'Vermeidet KI-Glow', modes: ['photo', 'video'], options: [['Standard',''],['Direct Neutral Flash','direct neutral white flash, harsh shadows, amateur photography'],['Ring-Blitz (Fashion Ringlight)','fashion ringlight illumination, halo eye catchlights'],['Hard Direct Flash (90s Party Snap)','hard direct on-camera flash, stark shadows, 90s party snap'],['Soft Diffused Umbrella Flash','soft diffused strobe flash, gentle wrap-around light'],['No Studio / Natural','no studio lighting, ambient light only'],['Pro Studio','professional studio lighting setup']] },
+      { type: 'select', id: 'colorFidelity', label: 'Farbtreue', desc: 'Sättigung & Grading', modes: ['photo', 'video'], options: [['Standard RGB',''],['Raw Tones / Flat','raw color tones, flat profile, low contrast, desaturated'],['KODAK Gold Warm Film Tones','warm Kodak Gold analog film tones, golden highlights'],['Fujifilm Velvia High-Vibrance','vibrant Fujifilm Velvia saturated landscape colors'],['Bleach Bypass (Gritty Matrix)','gritty bleach bypass color grading, desaturated high contrast'],['Technicolor 3-Strip (Retro Hollywood)','vibrant Technicolor 3-strip vintage color palette'],['Vivid / Instagram','vivid colors, high saturation, instagram filter'],['Monochrome','black and white, monochrome']] },
+      
       { type: 'header', label: 'Tech Specs (Kamera)', icon: 'fa-camera', modes: ['photo', 'video'] },
       { type: 'select', id: 'aspectRatio', label: 'Format (Aspect Ratio)', desc: 'Bestimmt die Auflösung.', modes: ['photo', 'video'], options: [['16:9 (Kino breit)','16:9'],['9:16 (TikTok/Reel)','9:16'],['1:1 (Instagram/Square)','1:1'],['21:9 (Ultrawide)','21:9'],['4:3 (TV Klassisch)','4:3'],['3:4 (Portrait)','3:4'],['2.35:1 (Anamorphic)','2.35:1']] },
-      { type: 'select', id: 'viewAngle', label: 'Kamerawinkel', desc: 'Perspektive der Aufnahme.', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Augenhöhe (Neutral)','eye-level shot'],['Froschperspektive (Low Angle)','low angle shot looking up'],['Vogelperspektive (High Angle)','high angle shot looking down'],['Top-Down (Draufsicht)','top-down drone view'],['Over-the-Shoulder','over-the-shoulder shot'],['Dutch Angle (Schräg)','dutch angle dynamic shot'],['POV (Ego)','first-person POV shot'],['Makro (Close-Up)','extreme macro close-up'],['Weitwinkel','wide angle shot'],['Fischauge','fisheye lens effect'],['Tele (Zoom)','telephoto compression'],['Selfie','selfie shot']] },
-      { type: 'select', id: 'filmStock', label: 'Film Look / Analog', desc: 'Simuliert analoges Filmmaterial.', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Digital Clean (8K)','digital crisp 8k'],['Kodak Portra 400','Kodak Portra 400 film grain'],['Cinestill 800T (Nacht)','Cinestill 800T halation'],['Fujifilm Velvia','Fujifilm Velvia 50'],['Kodak Tri-X (B&W)','Kodak Tri-X 400 black and white'],['Technicolor (Vintage)','vintage Technicolor'],['Bleach Bypass','bleach bypass gritty'],['VHS (Glitch)','VHS tape artifacting'],['Polaroid','Polaroid instant photo'],['IMAX (70mm)','IMAX 70mm film quality']] },
+      { type: 'select', id: 'focalLength', label: 'Brennweite (Focal Length)', desc: 'Objektiv-Charakteristik', modes: ['photo', 'video'], options: [['Bitte wählen',''],['14mm Ultra-Wide (Dynamisch)','14mm ultra-wide lens, dynamic perspective distortion'],['35mm Storytelling (Reportage)','35mm prime lens, natural narrative perspective'],['50mm Nifty Fifty (Standard)','50mm standard lens, true to life human vision'],['85mm Portrait (Proportional)','85mm portrait lens, flattering compression'],['200mm Telephoto (Komprimiert)','200mm telephoto lens, background compression'],['Anamorphic 2x (Kino-Look)','2x anamorphic lens, oval bokeh, ultra-wide cinema ratio']] },
+      { type: 'select', id: 'apertureDoF', label: 'Blende & Tiefenschärfe', desc: 'Hintergrund-Unschärfe', modes: ['photo', 'video'], options: [['Bitte wählen',''],['f/1.2 Hauchdünn (Razor Focus)','f/1.2 aperture, razor-thin depth of field, sharp focus on subject'],['f/1.8 Sanftes Bokeh (Creamy Bokeh)','f/1.8 aperture, creamy blurred background bokeh'],['f/2.8 Scharfes Subjekt (Separation)','f/2.8 aperture, clean subject separation'],['f/8 Durchgehend Scharf (Deep Focus)','f/8 aperture, deep focus, sharp background details']] },
+      { type: 'select', id: 'composition', label: 'Bildkomposition (Framing)', desc: 'Perspektivischer Aufbau', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Drittel-Regel (Rule of Thirds)','rule of thirds composition'],['Symmetrisch Zentriert (Wes Anderson)','centered symmetrical composition, Wes Anderson style'],['Goldener Schnitt (Golden Ratio)','golden ratio spiral composition'],['Führungslinien (Leading Lines)','dynamic leading lines pointing to subject'],['Negativer Raum (Minimalismus)','minimalist composition, vast negative space'],['Rahmen im Rahmen (Frame-in-Frame)','frame within a frame composition']] },
+      { type: 'select', id: 'colorGrading', label: 'Color Grading & Palette', desc: 'Farbstimmung & Look', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Teal & Orange (Hollywood)','Teal and Orange color grading, Hollywood blockbuster palette'],['Pastell-Ästhetik (Soft Pastel)','soft pastel color palette, gentle muted tones'],['Bleach Bypass (Fincher Gritty)','gritty bleach bypass color grading, desaturated high contrast'],['Monochrom + Akzent (Pop Color)','monochromatic black and white with vibrant color accent'],['Gedämpfte Erdtöne (Muted Earth)','muted organic earth tones, natural film palette'],['Cyberpunk RGB (Gesättigt)','saturated neon RGB color grading, high contrast']] },
+      { type: 'select', id: 'viewAngle', label: 'Kamerawinkel', desc: 'Perspektive der Aufnahme.', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Augenhöhe (Neutral)','eye-level shot'],['Froschperspektive (Low Angle)','low angle shot looking up'],['Vogelperspektive (High Angle)','high angle shot looking down'],['Top-Down (Satellit / Drohne)','high-altitude satellite drone top-down view'],['Wurm-Perspektive (Ground Level)','extreme ground-level worm-eye view'],['Over-the-Shoulder','over-the-shoulder shot'],['Dutch Angle (Schräg Tilt)','dramatic canted dutch angle tilt shot'],['POV (Ego)','first-person POV shot'],['Makro (Close-Up)','extreme macro close-up'],['Weitwinkel','wide angle shot'],['Fischauge','fisheye lens effect'],['Tele (Zoom)','telephoto compression'],['Selfie','selfie shot']] },
       { type: 'select', id: 'renderEngine', label: 'Render Stil (Digital)', desc: 'Für nicht-fotorealistische Stile.', modes: ['photo', 'video'], options: [['Bitte wählen',''],['Fotorealistisch (Raw)','photorealistic raw photo'],['Unreal Engine 5','Unreal Engine 5 render'],['Octane Render','Octane 3D render'],['Pixar / Disney','Pixar 3D animation style'],['Anime (Modern)','modern anime style'],['Ölgemälde','classic oil painting'],['Aquarell','watercolor painting'],['Concept Art','digital concept art'],['Vector Art','flat vector art'],['Pixel Art','retro pixel art']] },
       
       { type: 'header', label: 'Video Settings', icon: 'fa-film', modes: ['video'] },
       { type: 'select', id: 'cameraMotion', label: 'Kamerabewegung', modes: ['video'], options: [['Statisch (Stativ)','static tripod shot'],['Sanfter Zoom In','slow zoom in'],['Zoom Out','slow zoom out'],['Pan Rechts','smooth pan right'],['Pan Links','smooth pan left'],['Tracking Shot (Verfolgung)','dolly tracking shot'],['Handheld (Wackelig)','handheld shaky camera'],['FPV Drohne (Schnell)','fast FPV drone flight'],['Orbit (Kreisfahrt)','circular orbit shot']] },
+      { type: 'select', id: 'videoMotionEffect', label: 'Motion & Shutter Effekte', desc: 'Spezielle Video-Dynamik', modes: ['video'], options: [['Bitte wählen',''],['Slow-Motion (120 FPS)','slow-motion 120fps playback'],['Motion Blur (180° Shutter)','cinematic motion blur, 180 degree shutter angle'],['Zeitraffer (Time-lapse)','dramatic time-lapse sequence'],['Vertigo / Dolly Zoom','dolly zoom Vertigo effect, warping background']] },
       { type: 'select', id: 'fps', label: 'Framerate', modes: ['video'], options: [['24 FPS (Cinematic)','24'],['30 FPS (Standard)','30'],['60 FPS (Smooth)','60']] },
       { type: 'select', id: 'duration', label: 'Dauer', modes: ['video'], options: [['5 Sekunden','5s'],['10 Sekunden','10s']] },
       { type: 'select', id: 'loop', label: 'Loop', modes: ['video'], options: [['Nein','false'],['Ja','true']] }
@@ -385,10 +391,14 @@ function updateGenSummary() {
              parts.push(`OBJECT: ${join(getVal('objectMaterial'), getVal('objectCategory'), getVal('objectDesc'))}`);
         }
 
-        const env = join(getVal('location'), getVal('sceneType'), getVal('era'), getVal('weather'), getVal('lighting'));
+        const env = join(getVal('location'), getVal('sceneType'), getVal('era'), getVal('weather'), getVal('lighting'), getVal('lightingSetup'));
         if(env) parts.push(`SETTING: ${env}`);
 
-        const tech = join(getVal('viewAngle'), getVal('filmStock'), getVal('detailLevel'), getVal('opticsLogic'));
+        const tech = join(
+            getVal('viewAngle'), getVal('focalLength'), getVal('apertureDoF'), getVal('composition'),
+            getVal('filmStock'), getVal('colorGrading'), getVal('vfxParticles'), getVal('surfaceCondition'),
+            getVal('detailLevel'), getVal('opticsLogic'), getVal('videoMotionEffect')
+        );
         if(tech) parts.push(`STYLE: ${tech}`);
         
         if(getVal('aspectRatio')) parts.push(`FORMAT: ${getVal('aspectRatio')}`);
@@ -465,6 +475,328 @@ Every value inside the JSON must be written in English.`;
             throw new Error(`Konnte nicht mit LM Studio auf ${baseUrl} verbinden. Ist der Server gestartet und CORS aktiviert? (${e.message})`);
         }
     }
+
+    window.setCopilotPreset = function(ideaText) {
+        const el = document.getElementById('copilotIdea');
+        if (el) {
+            el.value = ideaText;
+            el.focus();
+        }
+    };
+
+    window.runCopilot = async function() {
+        const btn = document.getElementById('btnRunCopilot');
+        const idea = document.getElementById('copilotIdea')?.value.trim();
+        const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
+        const reasoningCard = document.getElementById('copilotReasoningCard');
+        const reasoningText = document.getElementById('copilotReasoningText');
+
+        if (!idea) {
+            showToast("Bitte gib zuerst deine Idee in das Co-Pilot Feld ein!", true);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="display:inline-block; margin-right:5px;"></span> Co-Pilot analysiert mit Gemini 3.5 Flash Lite...';
+
+        try {
+            const response = await fetch(BACKEND_API_URL + '/api/copilot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idea: idea,
+                    lm_url: lmUrl
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `Server Status ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.fields && typeof data.fields === 'object') {
+                let configuredCount = 0;
+                for (const [fieldId, val] of Object.entries(data.fields)) {
+                    if (!val) continue;
+                    const el = document.getElementById(fieldId);
+                    if (!el) continue;
+
+                    if (el.tagName === 'SELECT' && el.options) {
+                        let matched = false;
+                        const valLower = String(val).toLowerCase();
+                        for (let opt of el.options) {
+                            if (opt.value) {
+                                const optLower = String(opt.value).toLowerCase();
+                                if (optLower === valLower || optLower.includes(valLower) || valLower.includes(optLower)) {
+                                    el.value = opt.value;
+                                    matched = true;
+                                    configuredCount++;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!matched) {
+                            for (let opt of el.options) {
+                                if (opt.text && String(opt.text).toLowerCase().includes(valLower)) {
+                                    el.value = opt.value;
+                                    matched = true;
+                                    configuredCount++;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.value = val;
+                        configuredCount++;
+                    }
+                }
+
+                // Smart Person vs. Quickstart handling
+                const personCheck = document.getElementById('describePerson');
+                const quickBotIdeaEl = document.getElementById('quickBotIdea');
+                const quickBotResultEl = document.getElementById('quickBotResult');
+
+                const isPersonPresent = data.hasPerson === true || 
+                    Boolean(data.fields.gender || data.fields.clothing || data.fields.ageGroup || 
+                    (data.fields.action && (
+                        idea.toLowerCase().includes('person') || idea.toLowerCase().includes('frau') || 
+                        idea.toLowerCase().includes('mann') || idea.toLowerCase().includes('paar') || 
+                        idea.toLowerCase().includes('gesicht') || idea.toLowerCase().includes('model') ||
+                        idea.toLowerCase().includes('vater') || idea.toLowerCase().includes('kind')
+                    )));
+
+                if (data.baseConcept) {
+                    const actionEl = document.getElementById('action');
+                    if (actionEl) {
+                        actionEl.value = data.baseConcept;
+                    }
+                    if (quickBotIdeaEl) quickBotIdeaEl.value = idea;
+                    if (quickBotResultEl) quickBotResultEl.value = data.baseConcept;
+                }
+
+                if (isPersonPresent) {
+                    if (personCheck) {
+                        personCheck.checked = true;
+                        personCheck.dispatchEvent(new Event('change'));
+                    }
+                } else {
+                    if (personCheck) {
+                        personCheck.checked = false;
+                        personCheck.dispatchEvent(new Event('change'));
+                    }
+                }
+
+                showToast(`✨ Co-Pilot hat ${configuredCount} Regler für dich optimiert!`);
+            }
+
+            if (data.reasoning) {
+                if (reasoningCard && reasoningText) {
+                    reasoningText.innerText = data.reasoning;
+                    reasoningCard.style.display = 'block';
+                }
+            }
+
+            updateGenSummary();
+        } catch (e) {
+            console.error("Co-Pilot Fehler:", e);
+            showToast("Fehler beim Co-Pilot Aufruf: " + e.message, true);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ Dropdowns automatisch durch Co-Pilot einstellen';
+    };
+
+    // --- WHITE PAPER UX ENHANCEMENTS ---
+    let currentExportFormat = 'mj'; // 'mj', 'flux', 'json', 'video'
+    let lastGeneratedData = null;
+
+    window.magicPolish = async function(textareaId) {
+        const el = document.getElementById(textareaId);
+        if (!el || !el.value.trim()) {
+            showToast("Bitte gib zuerst einen Text zum Aufhübschen ein!", true);
+            return;
+        }
+
+        const originalText = el.value.trim();
+        showToast("✨ Magic Polish bereichert deine Idee mit Gemini 3.5 Flash Lite...");
+
+        try {
+            const response = await fetch(BACKEND_API_URL + '/api/optimize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    goal: originalText,
+                    model: 'gemini-3.5-flash-lite',
+                    system_prompt: 'Du bist ein meisterhafter KI-Prompt-Engineered. Bereichere die Idee des Nutzers mit stimmungsvollen, hochauflösenden Details und visuellen Adjektiven in Deutsch. Antworte in 1-2 Sätzen, flüssig und direkt ohne Markdown.'
+                })
+            });
+
+            if (!response.ok) throw new Error("API-Fehler");
+            const data = await response.json();
+            if (data.optimized_goal) {
+                el.value = data.optimized_goal.trim();
+                showToast("✨ Idee erfolgreich aufgehübscht!");
+                updateGenSummary();
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Fehler beim Aufhübschen.", true);
+        }
+    };
+
+    window.selectVisualPreset = function(presetKey) {
+        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+        
+        const presets = {
+            cinematic: {
+                focalLength: "85mm portrait lens, flattering compression",
+                apertureDoF: "f/1.8 aperture, creamy blurred background bokeh",
+                colorGrading: "Teal and Orange color grading, Hollywood blockbuster palette",
+                sceneType: "cinematic realism",
+                detailLevel: "8k raw photo, extreme detail, no smoothing, uncompressed"
+            },
+            cyberpunk: {
+                focalLength: "2x anamorphic lens, oval bokeh, ultra-wide cinema ratio",
+                lightingSetup: "neon split lighting, dual tone cyan and magenta glow",
+                colorGrading: "saturated neon RGB color grading, high contrast",
+                sceneType: "cyberpunk sci-fi",
+                vfxParticles: "cinematic lens flare, anamorphic blue glare",
+                surfaceCondition: "rain-slicked wet surface, glossy water reflections"
+            },
+            fantasy: {
+                lightingSetup: "chiaroscuro lighting, deep dramatic shadows, Caravaggio style",
+                vfxParticles: "glowing bioluminescent spores, magical particles",
+                sceneType: "high fantasy",
+                colorGrading: "muted organic earth tones, natural film palette"
+            },
+            fashion: {
+                focalLength: "85mm portrait lens, flattering compression",
+                apertureDoF: "f/1.8 aperture, creamy blurred background bokeh",
+                lightingSetup: "3-point studio lighting setup, balanced key and fill",
+                sceneType: "high fashion editorial",
+                detailLevel: "8k raw photo, extreme detail, no smoothing, uncompressed"
+            },
+            vintage: {
+                filmStock: "Kodak Portra 400 film grain",
+                colorGrading: "soft pastel color palette, gentle muted tones",
+                sensorPhysics: "heavy film grain",
+                sceneType: "vintage retro aesthetic"
+            }
+        };
+
+        const config = presets[presetKey];
+        if (config) {
+            let count = 0;
+            for (const [id, val] of Object.entries(config)) {
+                const el = document.getElementById(id);
+                if (el && val && el.options) {
+                    for (let opt of el.options) {
+                        if (opt.value && opt.value.toLowerCase().includes(val.toLowerCase())) {
+                            el.value = opt.value;
+                            count++;
+                            break;
+                        }
+                    }
+                }
+            }
+            showToast(`🎨 Style Preset "${presetKey}" angewendet!`);
+            updateGenSummary();
+        }
+    };
+
+    window.setExportFormat = function(format) {
+        currentExportFormat = format;
+        document.querySelectorAll('.export-tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeTab = document.getElementById(`tab-format-${format}`);
+        if (activeTab) activeTab.classList.add('active');
+
+        renderExportPayload();
+    };
+
+    function renderExportPayload() {
+        const codeBlock = document.getElementById('codeBlock');
+        if (!codeBlock) return;
+
+        if (!lastGeneratedData) {
+            codeBlock.innerText = "// Wähle Parameter oder nutze \"Local AI JSON Generate\"...";
+            return;
+        }
+
+        const prompt = lastGeneratedData.prompts?.positive_prompt || lastGeneratedData.prompt || "";
+        const ar = getVal('aspectRatio') || "16:9";
+
+        if (currentExportFormat === 'mj') {
+            codeBlock.innerText = `/imagine prompt: ${prompt.replace(/--ar [0-9:-]+/g, '').trim()} --ar ${ar} --v 6.1 --style raw`;
+        } else if (currentExportFormat === 'flux') {
+            codeBlock.innerText = `[FLUX / SDXL PROMPT]\n${prompt}\n\n[AUTOMATED AI NEGATIVE PROMPT (INVISIBLY APPLIED)]\n${lastGeneratedData.prompts?.negative_prompt || "worst quality, deformed, bad anatomy, text, watermark"}`;
+        } else if (currentExportFormat === 'json') {
+            codeBlock.innerText = JSON.stringify(lastGeneratedData, null, 2);
+        } else if (currentExportFormat === 'video') {
+            const motion = getVal('cameraMotion') || "slow tracking shot";
+            codeBlock.innerText = `[VIDEO AI PROMPT (Veo / Sora / Kling)]\n${prompt}\nCamera Movement: ${motion}\nFramerate: ${getVal('fps') || '24'} fps`;
+        }
+
+        if (window.Prism) Prism.highlightElement(codeBlock);
+    }
+
+    window.saveToHistory = function(promptText) {
+        if (!promptText) return;
+        try {
+            let history = JSON.parse(localStorage.getItem('nb_prompt_history') || '[]');
+            history = history.filter(item => item !== promptText);
+            history.unshift(promptText);
+            if (history.length > 10) history = history.slice(0, 10);
+            localStorage.setItem('nb_prompt_history', JSON.stringify(history));
+            renderHistory();
+        } catch (e) {
+            console.error("History save error:", e);
+        }
+    };
+
+    window.renderHistory = function() {
+        const container = document.getElementById('historyList');
+        if (!container) return;
+        try {
+            const history = JSON.parse(localStorage.getItem('nb_prompt_history') || '[]');
+            if (history.length === 0) {
+                container.innerHTML = '<span style="font-size:0.7rem; color:var(--text-muted);">Noch keine generierten Prompts im Verlauf.</span>';
+                return;
+            }
+
+            container.innerHTML = history.map((item, idx) => `
+                <div class="history-item" onclick="restoreFromHistory(${idx})">
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:85%;">${item}</span>
+                    <i class="fa-solid fa-arrow-rotate-left" style="color:var(--primary); font-size:0.75rem;" title="Prompt wiederherstellen"></i>
+                </div>
+            `).join('');
+        } catch (e) {
+            console.error("History render error:", e);
+        }
+    };
+
+    window.restoreFromHistory = function(idx) {
+        try {
+            const history = JSON.parse(localStorage.getItem('nb_prompt_history') || '[]');
+            if (history[idx]) {
+                lastGeneratedData = {
+                    workflow_meta: { intent: "Restored from history" },
+                    prompts: { positive_prompt: history[idx], negative_prompt: "worst quality, low resolution, deformed" }
+                };
+                renderExportPayload();
+                showToast("Prompt aus Verlauf wiederhergestellt!");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    window.clearHistory = function() {
+        localStorage.removeItem('nb_prompt_history');
+        renderHistory();
+        showToast("Verlauf geleert.");
+    };
 
     window.runQuickBot = async function() {
         const btn = document.getElementById('btnQuickBot');
@@ -642,9 +974,14 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                                     statusSpan.style.color = 'var(--success)';
                                     
                                     const res = extractJSON(payload.content);
+                                    lastGeneratedData = res;
+                                    renderExportPayload();
+                                    if (res.prompts?.positive_prompt) {
+                                        saveToHistory(res.prompts.positive_prompt);
+                                    }
                                     document.getElementById('codeBlock').textContent = JSON.stringify(res, null, 2);
                                     Prism.highlightElement(document.getElementById('codeBlock'));
-                                    showToast("Auto Bot JSON erfolgreich generiert!");
+                                    showToast("Auto Bot JSON & Multimodaler Output generiert!");
                                 }
                             } catch (err) {
                                 console.error("Error parsing SSE JSON:", err);
@@ -724,8 +1061,10 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             clothes ? `wearing ${clothes}` : '', 
             action,
             additionalElementsTech.join(", "), 
-            location, lighting, style,
-            getVal('filmStock'), getVal('opticsLogic'), getVal('detailLevel'),
+            location, lighting, getVal('lightingSetup'), style,
+            getVal('composition'), getVal('focalLength'), getVal('apertureDoF'),
+            getVal('filmStock'), getVal('colorGrading'), getVal('vfxParticles'), getVal('surfaceCondition'),
+            getVal('opticsLogic'), getVal('detailLevel'), getVal('videoMotionEffect'),
             "8k uhd, dslr, high quality", `--ar ${aspectRatio.replace(':','-')}`
         );
 
@@ -751,9 +1090,10 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 "controlnet_hints": []
             }
         };
-        document.getElementById('codeBlock').textContent = JSON.stringify(json, null, 2);
-        Prism.highlightElement(document.getElementById('codeBlock'));
-        showToast("Static JSON erfolgreich generiert!");
+        lastGeneratedData = json;
+        renderExportPayload();
+        saveToHistory(techStr);
+        showToast("Static JSON & Multimodaler Output generiert!");
     }
     
     function saveUrl() { 
@@ -2147,3 +2487,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         btn.innerHTML = '⚡ Optimiere Prompt';
         btn.disabled = false;
     };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof renderHistory === 'function') renderHistory();
+    });
