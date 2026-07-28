@@ -74,9 +74,9 @@
     }
 
     const HARDCODED_URL = 'http://localhost:1234/v1';
-    const BACKEND_API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== ''
-        ? ''
-        : 'https://imagecreator-t9dx.onrender.com';
+    const BACKEND_API_URL = window.location.protocol === 'file:'
+        ? 'https://imagecreator-t9dx.onrender.com'
+        : '';
     let globalPromptStyle = 'tech'; 
 
     function switchTab(id) {
@@ -2108,7 +2108,11 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         } catch (e) { 
             const loadEl = document.getElementById(tempId);
             if (loadEl) loadEl.remove();
-            chat.innerHTML += `<div class="msg ai" style="padding:10px 14px; border-radius:8px; line-height:1.4; max-width:90%; background:var(--bg-input); border:1px solid var(--border-color); align-self:flex-start; color:var(--danger);">Server-Verbindung fehlgeschlagen. Läuft der Server auf Port 5080?</div>`; 
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const msg = isLocal
+                ? "Server-Verbindung fehlgeschlagen. Ist der Flask-Server gestartet?"
+                : "Server-Verbindung fehlgeschlagen. Bitte versuche es in wenigen Sekunden erneut (der Online-Server wacht eventuell gerade aus dem Ruhezustand auf).";
+            chat.innerHTML += `<div class="msg ai" style="padding:10px 14px; border-radius:8px; line-height:1.4; max-width:90%; background:var(--bg-input); border:1px solid var(--border-color); align-self:flex-start; color:var(--danger);">${msg}</div>`; 
         } finally {
             btn.disabled = false;
         }
