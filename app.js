@@ -80,13 +80,20 @@
     let globalPromptStyle = 'tech'; 
 
     function switchTab(id) {
+        const target = document.getElementById(id);
+        if (!target) return;
+        
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
         
-        document.getElementById(id).classList.add('active');
-        const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.onclick.toString().includes(id));
-        if(btn) btn.classList.add('active');
+        target.classList.add('active');
+        const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => {
+            const attr = b.getAttribute('onclick');
+            return attr && attr.includes(id);
+        });
+        if (btn) btn.classList.add('active');
     }
+    window.switchTab = switchTab;
     
     function changeTheme() {
         const theme = document.getElementById('themeSelect').value;
@@ -558,34 +565,31 @@ Every value inside the JSON must be written in English.`;
                 const quickBotIdeaEl = document.getElementById('quickBotIdea');
                 const quickBotResultEl = document.getElementById('quickBotResult');
 
-                const isPersonPresent = data.hasPerson === true || 
-                    Boolean(data.fields.gender || data.fields.clothing || data.fields.ageGroup || 
-                    (data.fields.action && (
-                        idea.toLowerCase().includes('person') || idea.toLowerCase().includes('frau') || 
-                        idea.toLowerCase().includes('mann') || idea.toLowerCase().includes('paar') || 
-                        idea.toLowerCase().includes('gesicht') || idea.toLowerCase().includes('model') ||
-                        idea.toLowerCase().includes('vater') || idea.toLowerCase().includes('kind')
-                    )));
+                const isPersonPresent = data.hasPerson === true;
 
-                if (data.baseConcept) {
-                    const actionEl = document.getElementById('action');
-                    if (actionEl) {
-                        actionEl.value = data.baseConcept;
-                    }
-                    if (quickBotIdeaEl) quickBotIdeaEl.value = idea;
-                    if (quickBotResultEl) quickBotResultEl.value = data.baseConcept;
-                }
+                if (quickBotIdeaEl) quickBotIdeaEl.value = idea;
+                if (quickBotResultEl && data.baseConcept) quickBotResultEl.value = data.baseConcept;
 
                 if (isPersonPresent) {
                     if (personCheck) {
                         personCheck.checked = true;
                         personCheck.dispatchEvent(new Event('change'));
                     }
+                    const actionEl = document.getElementById('action');
+                    if (actionEl && (data.fields?.action || data.baseConcept)) {
+                        actionEl.value = data.fields?.action || data.baseConcept;
+                    }
                 } else {
                     if (personCheck) {
                         personCheck.checked = false;
                         personCheck.dispatchEvent(new Event('change'));
                     }
+                    // Leere Personen-Felder explizit
+                    const personFieldIds = ['gender', 'ageGroup', 'ethnicity', 'bodyType', 'hairColor', 'hairStyle', 'eyeColor', 'expression', 'clothing', 'bikiniStyle', 'action'];
+                    personFieldIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
                 }
 
                 showToast(`✨ Co-Pilot hat ${configuredCount} Regler für dich optimiert!`);
@@ -1550,13 +1554,38 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
         }
     }
 
+    function setNanoValue(path, value) {
+        if (!value) return;
+        const el = document.querySelector(`[data-nano="${path}"]`);
+        if (el) {
+            el.value = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        const parts = path.split('.');
+        if (parts.length === 2 && window.nanoState && window.nanoState[parts[0]]) {
+            window.nanoState[parts[0]][parts[1]] = value;
+        }
+    }
+
     async function optimizeCinePrompt() {
         const btn = document.getElementById('optimizeCineBtn');
         const spinner = document.getElementById('cineSpinner');
         btn.disabled = true; spinner.style.display = 'inline-block';
 
+        const sceneInputVal = document.querySelector('[data-nano="cine.scene"]')?.value || nanoState.cine.scene || "";
+        nanoState.cine.scene = sceneInputVal;
+
         const ci = nanoState.cine;
-        const rawContext = `Mode: ${ci.mode === 'edit' ? "EDIT EXISTING IMAGE" : "NEW GENERATION"}\nScene: ${ci.scene || "Not specified"}\nCamera: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming: ${ci.moves.join(', ')}`;
+        let jsonContext = "";
+        if (uploadedCineJson) {
+            jsonContext = `\nJSON Context from Uploaded File:\n${JSON.stringify(uploadedCineJson, null, 2)}`;
+        }
+
+        const aspectRatioVal = document.querySelector('[data-nano="cine.ratio"]')?.value || nanoState.cine.ratio || "--ar 16:9";
+        nanoState.cine.ratio = aspectRatioVal;
+
+        const rawContext = `Mode: ${ci.mode === 'edit' ? "EDIT EXISTING IMAGE" : "NEW GENERATION"}\nScene: ${sceneInputVal}\nCamera: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming: ${ci.moves.join(', ')}\nAspect Ratio Parameter: ${aspectRatioVal}${jsonContext}`;
         
         const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectCine').value;
@@ -1571,6 +1600,7 @@ Halte dich strikt an folgende Regeln:
 3. SPRACHE: Übersetze die Szene komplett ins Englische, da Bild-KIs das präziser verarbeiten können.
 4. KEINE WIDERSPRÜCHLICHEN NEGATIVES: Halte den Negative Prompt sauber und fokussiert auf Qualität und Anatomie. Liste dort KEINE Kleidungsstücke oder Objekte auf, die einfach nur nicht im Bild sein sollen.
 5. FOKUS AUF REALISMUS: Nutze präzise Kamera-Begriffe statt schwammiger Wörter wie "photorealistic".
+6. ASPECT RATIO PFLICHT: Füge am Ende von 'final_prompt' ZWINGEND den Parameter '${aspectRatioVal}' (z.B. --ar 9:16, --ar 16:9, etc.) an!
 
 Ausgabe-Format:
 Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgende Struktur haben:
@@ -1583,7 +1613,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
   "prompts": {
     "technical_prompt": "Prompt focused on camera technicalities, film stock emulation, grain, color grading, and lens effects",
     "scene_prompt": "Prompt focused on the character description, environment, mood, and weather",
-    "final_prompt": "Integrated cinematic prompt combining technical and scene aspects with aspect ratio parameters (e.g., --ar 16:9)"
+    "final_prompt": "Integrated cinematic prompt combining technical and scene aspects with exact aspect ratio parameter at the end (e.g. ${aspectRatioVal})"
   }
 }`;
         
@@ -1595,7 +1625,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             `;
             document.getElementById('out-cine-scene').innerText = res.prompts?.scene_prompt || "";
             document.getElementById('out-cine-final').textContent = JSON.stringify(res, null, 2);
-            Prism.highlightElement(document.getElementById('out-cine-final'));
+            if (window.Prism) Prism.highlightElement(document.getElementById('out-cine-final'));
         }
 
         if (!useAutoBot) {
@@ -1884,9 +1914,13 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         btnElement.disabled = true;
     };
 
-    window.generateVeoPrompt = async function() {
+    window.generateVeoPrompt = async function(forcedMode) {
         const aiBtn = document.getElementById('veoAiBtn');
+        const i2vBtn = document.getElementById('veoI2vBtn');
         const spinner = document.getElementById('veoSpinner');
+        const i2vSpinner = document.getElementById('veoI2vSpinner');
+        
+        const mode = forcedMode || document.getElementById('veoModeSelect')?.value || 't2v';
         const vals = getVeoFields();
         
         if (vals.Subjekt === "[LEER]" && vals.Aktion === "[LEER]") {
@@ -1894,8 +1928,14 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
             return;
         }
 
-        aiBtn.disabled = true;
-        spinner.style.display = 'inline-block';
+        if (mode === 'i2v') {
+            if (i2vBtn) i2vBtn.disabled = true;
+            if (i2vSpinner) i2vSpinner.style.display = 'inline-block';
+        } else {
+            if (aiBtn) aiBtn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+        }
+        
         document.getElementById('veo-output-container').style.display = 'none';
 
         vals.Stil = document.getElementById('veo_style').value;
@@ -1903,7 +1943,29 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         const model = document.getElementById('modelSelectVeo').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
-        const systemPrompt = `Du bist ein professioneller Prompt-Engineer für die High-End Video-KI 'Veo 3.1'.
+        const systemPrompt = mode === 'i2v' ? `STRIKTE ROLLE: Du bist ein universeller, multimodaler Prompt-Engineer für IMAGE-TO-VIDEO (I2V) KI-Videogeneratoren (Veo 3.1, Runway Gen-3, Luma Dream Machine, Kling AI, Sora).
+
+MULTIMODALES GEDANKEN-MODELL (ALLE MOTIVE: PERSONEN, VEHIKEL, DRONEN, SHAMPOO-FLASCHEN, ESSEN, LANDSCHAFTEN, CHRACTER, ANIME):
+Egal was der Nutzer eingegeben hat (Auto, Mensch, Produktflasche, Drache, Landschaft, Gebäude, Mahlzeit): Stelle dir vor, genau dieses Foto existiert bereits als fertiges Startbild!
+
+DEINE AUFGABE:
+Erstelle einen reinen ANIMATIONS- & KAMERABFEHL, um genau dieses vorliegende Foto (egal welches Motiv) flüssig und realistisch zu animieren.
+
+UNIVERSAL-REGELN FÜR I2V (MULTIMODAL):
+1. KAMERA ZUERST: Starte den Prompt IMMER mit der Kamerabewegung (z.B. "Camera movement: slow push-in shot...", "orbiting camera shot...", "tracking shot...").
+2. STRIKTE NORM FÜR DAS MOTIV (KEINE OPTIK-WIEDERHOLUNG): Verwende für das Hauptmotiv NUR das neutrale Wort (z.B. "the subject", "the person", "the product", "the vehicle"). Es ist STRENGSTENS VERBOTEN, Farbadjektive, Lackierungen oder optische Merkmale (wie 'matte-black', 'blue LEDs', 'red dress', 'gold') im gesamten Prompt zu erwähnen, selbst wenn der Nutzer sie im Formular stehen hat!
+3. DYNAMIK & PHYSIK PASSEND ZUM MOTIV:
+   - Bei Personen/Charakteren: Mimikwechsel, Gestik, Haarwehen im Wind, Blickrichtung.
+   - Bei Produkten/Flaschen: Wasserperlen, die heruntertropfen, Flüssigkeitsspritzer, rotierendes Studio-Licht.
+   - Bei Vehikeln/Objekten: Fahrt, Funken, Hitzeflimmern, Reifen-Spin, Staub.
+   - Bei Landschaften/Architektur: Ziehende Wolken, Lichtwechsel, flackernde Neonschilder, Laub im Wind.
+4. SOUND DESIGN: Ergänze das perfekt zum Motiv passende natürliche Sound-Design.
+
+EXAKTES PROMPT-FORMAT:
+"Camera movement: [Kamerabewegung]. Subject motion: [Exakte Bewegung/Animation des neutralen Motivs]. Environment physics and particles: [Bewegte Umwelt, Lichtwechsel & Partikel]. Sound design: [Natürlicher Ton/Sounds]."
+
+Antworte AUSSCHLIESSLICH mit diesem englischen I2V Prompt. Keine Begrüßung.` 
+: `Du bist ein professioneller Prompt-Engineer für die High-End Video-KI 'Veo 3.1' (Text-to-Video).
 Deine Aufgabe ist es, die strukturierten Stichpunkte des Nutzers in einen einzigen, fließenden, hochgradig beschreibenden englischen Absatz zu verwandeln.
 
 Befolge beim Schreiben zwingend diese erzählerische Struktur:
@@ -1917,7 +1979,14 @@ REGELN:
 - Vermeide Klischees.
 - Antworte AUSSCHLIESSLICH mit dem finalen englischen Text. Keine Begrüßung, keine Bestätigung.`;
 
-        const structuredInput = `Bitte erstelle einen nahtlosen Veo 3.1 Prompt aus diesen Elementen:
+        const structuredInput = mode === 'i2v' ? `MODUS: UNIVERSAL IMAGE-TO-VIDEO (Stelle dir das vorliegende Foto dieses Motivs vor und erstelle NUR den Befehl, um genau dieses Foto zum Leben zu erwecken)
+- Hauptmotiv im vorliegenden Foto: ${vals.Subjekt}
+- Auszuführende Bewegung/Animation: ${vals.Aktion}
+- Umwelt-Dynamik, Physik & Licht: ${vals.FX}
+- Setting-Entwicklung: ${vals.Setting}
+- Kamerabewegung: ${vals.Kamera}
+- Sound Design: ${vals.Audio}`
+: `MODUS: TEXT-TO-VIDEO (Erstelle das Bild und die Szene komplett neu)
 - Subjekt: ${vals.Subjekt}
 - Aktion/Bewegung: ${vals.Aktion}
 - Umwelt/Effekte: ${vals.FX}
@@ -2027,8 +2096,10 @@ REGELN:
                 statusSpan.innerText = 'Failed';
                 statusSpan.style.color = 'var(--danger)';
             } finally {
-                aiBtn.disabled = false;
-                spinner.style.display = 'none';
+                if (aiBtn) aiBtn.disabled = false;
+                if (i2vBtn) i2vBtn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+                if (i2vSpinner) i2vSpinner.style.display = 'none';
             }
         }
     };
@@ -2036,6 +2107,322 @@ REGELN:
     window.copyVeoToClipboard = function() {
         navigator.clipboard.writeText(document.getElementById('veoFinalPrompt').innerText);
         showToast("Veo 3.1 Prompt in die Zwischenablage kopiert! 📋");
+    };
+
+    // --- VISION IMAGE TO VIDEO HANDLERS ---
+    let uploadedVisionBase64 = null;
+
+    function processVisionFile(file) {
+        if (!file || !file.type.startsWith('image/')) {
+            showToast("Bitte nur Bilddateien (JPG, PNG, WebP) hochladen!", true);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            uploadedVisionBase64 = e.target.result;
+            const imgEl = document.getElementById('visionImagePreview');
+            const previewContainer = document.getElementById('visionImagePreviewContainer');
+            const btnRun = document.getElementById('btnRunVision');
+            const label = document.getElementById('visionUploadLabel');
+
+            if (imgEl) imgEl.src = uploadedVisionBase64;
+            if (previewContainer) previewContainer.style.display = 'block';
+            if (btnRun) btnRun.style.display = 'block';
+            if (label) label.innerText = `Bild geladen: ${file.name}`;
+            
+            showToast("Bild erfolgreich geladen! Gemini Flash Lite Vision steht bereit. 👁️");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    window.handleVisionImageUpload = function(event) {
+        const file = event.target.files[0];
+        if (file) processVisionFile(file);
+    };
+
+    // Attach Drag & Drop listeners
+    document.addEventListener('DOMContentLoaded', () => {
+        setupDragAndDrop();
+    });
+
+    function setupDragAndDrop() {
+        const dropZone = document.getElementById('visionDropZone');
+        if (!dropZone) return;
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.style.borderColor = 'var(--accent)';
+                dropZone.style.background = 'rgba(16, 185, 129, 0.15)';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.style.borderColor = 'var(--primary)';
+                dropZone.style.background = 'rgba(30, 41, 59, 0.4)';
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                processVisionFile(files[0]);
+            }
+        }, false);
+    }
+    setTimeout(setupDragAndDrop, 500);
+
+    // --- CINEMA EDIT VISION & JSON HANDLERS ---
+    let uploadedCineBase64 = null;
+    let uploadedCineJson = null;
+
+    function processCineFile(file) {
+        if (!file) return;
+
+        if (file.name.endsWith('.json') || file.type === 'application/json') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    uploadedCineJson = JSON.parse(e.target.result);
+                    uploadedCineBase64 = null;
+                    const btnRun = document.getElementById('btnRunCineVision');
+                    const label = document.getElementById('cineUploadLabel');
+                    if (btnRun) btnRun.style.display = 'inline-block';
+                    if (label) label.innerText = `JSON geladen: ${file.name}`;
+                    showToast("JSON-Datei geladen! Gemini 3.5 Flash Lite bereit. 📄✨");
+                } catch (err) {
+                    showToast("Fehlerhafte JSON-Datei!", true);
+                }
+            };
+            reader.readAsText(file);
+        } else if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedCineBase64 = e.target.result;
+                uploadedCineJson = null;
+                const imgEl = document.getElementById('cineVisionPreview');
+                const previewContainer = document.getElementById('cineVisionPreviewContainer');
+                const btnRun = document.getElementById('btnRunCineVision');
+                const label = document.getElementById('cineUploadLabel');
+
+                if (imgEl) imgEl.src = uploadedCineBase64;
+                if (previewContainer) previewContainer.style.display = 'block';
+                if (btnRun) btnRun.style.display = 'inline-block';
+                if (label) label.innerText = `Bild geladen: ${file.name}`;
+
+                showToast("Referenzbild geladen! Gemini 3.5 Flash Lite Vision bereit. 👁️");
+            };
+            reader.readAsDataURL(file);
+        } else {
+            showToast("Bitte ein Bild (JPG/PNG) oder eine JSON-Datei hochladen!", true);
+        }
+    }
+
+    window.handleCineVisionUpload = function(event) {
+        const file = event.target.files[0];
+        if (file) processCineFile(file);
+    };
+
+    window.clearCineVisionImage = function() {
+        uploadedCineBase64 = null;
+        uploadedCineJson = null;
+        const input = document.getElementById('cineVisionInput');
+        const previewContainer = document.getElementById('cineVisionPreviewContainer');
+        const btnRun = document.getElementById('btnRunCineVision');
+        const label = document.getElementById('cineUploadLabel');
+
+        if (input) input.value = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (btnRun) btnRun.style.display = 'none';
+        if (label) label.innerText = 'Bild / JSON hierhin ziehen oder wählen';
+    };
+
+    window.runCineVisionAnalysis = async function() {
+        if (!uploadedCineBase64 && !uploadedCineJson) {
+            showToast("Bitte zuerst ein Bild oder eine JSON hochladen!", true);
+            return;
+        }
+
+        const btnRun = document.getElementById('btnRunCineVision');
+        const spinner = document.getElementById('cineVisionSpinner');
+        const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
+
+        if (btnRun) btnRun.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
+
+        showToast("Gemini 3.5 Flash Lite analysiert Motiv & stellt Kamera-Rig ein... 👁️🎬");
+
+        try {
+            const resp = await fetch(`${BACKEND_API_URL}/api/analyze-cine-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: uploadedCineBase64,
+                    json_data: uploadedCineJson,
+                    lm_url: lmUrl
+                })
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok && data) {
+                // 1. Auto-fill Scene Description & sync nanoState
+                if (data.scene_description) {
+                    setNanoValue('cine.scene', data.scene_description);
+                }
+
+                // 2. Auto-set Virtual Rig Dropdowns
+                if (data.rig) {
+                    if (data.rig.camera) setNanoValue('cine.camera', data.rig.camera);
+                    if (data.rig.lens) setNanoValue('cine.lens', data.rig.lens);
+                    if (data.rig.focal) setNanoValue('cine.focal', data.rig.focal);
+                    if (data.rig.aperture) setNanoValue('cine.aperture', data.rig.aperture);
+                }
+
+                // 3. Trigger prompt preview update ONLY (do not auto-trigger AI optimization)
+                updateNanoPrompts();
+
+                showToast(`Vision & Auto-Rig abgeschlossen! (${data.identified_concept || 'Konzept erkannt'}) – Passe deine Einstellungen an & klicke auf 'KI Prompt Generieren'. 🎬✨`);
+            } else {
+                showToast("Fehler bei Vision-Analyse: " + (data.error || "Unbekannter Fehler"), true);
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Verbindungsfehler: " + e.message, true);
+        } finally {
+            if (btnRun) btnRun.disabled = false;
+            if (spinner) spinner.style.display = 'none';
+        }
+    };
+
+    function helperSetCineDragDrop() {
+        const dropZone = document.getElementById('cineVisionDropZone');
+        if (!dropZone) return;
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.style.borderColor = 'var(--accent)';
+                dropZone.style.background = 'rgba(16, 185, 129, 0.15)';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.style.borderColor = 'var(--primary)';
+                dropZone.style.background = 'rgba(30, 41, 59, 0.4)';
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                processCineFile(files[0]);
+            }
+        }, false);
+    }
+    setTimeout(helperSetCineDragDrop, 600);
+
+    window.clearVisionImage = function() {
+        uploadedVisionBase64 = null;
+        const input = document.getElementById('visionImageInput');
+        const previewContainer = document.getElementById('visionImagePreviewContainer');
+        const btnRun = document.getElementById('btnRunVision');
+        const label = document.getElementById('visionUploadLabel');
+
+        if (input) input.value = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (btnRun) btnRun.style.display = 'none';
+        if (label) label.innerText = 'Bild auswählen oder hierhin ziehen';
+    };
+
+    window.runVisionAnalysis = async function() {
+        if (!uploadedVisionBase64) {
+            showToast("Bitte zuerst ein Bild hochladen!", true);
+            return;
+        }
+
+        const btnRun = document.getElementById('btnRunVision');
+        const spinner = document.getElementById('visionSpinner');
+        const veoOutput = document.getElementById('veo-output-container');
+        const veoPromptEl = document.getElementById('veoFinalPrompt');
+        const userHint = document.getElementById('veo_action')?.value || '';
+        const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
+
+        if (btnRun) btnRun.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
+        if (veoOutput) veoOutput.style.display = 'none';
+
+        showToast("Gemini 3.5 Flash Lite Vision analysiert jetzt dein Bild... 👁️✨");
+
+        try {
+            const resp = await fetch(`${BACKEND_API_URL}/api/analyze-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: uploadedVisionBase64,
+                    hint: userHint,
+                    lm_url: lmUrl
+                })
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok && data) {
+                // 1. Auto-fill Form Fields if returned by Vision AI
+                if (data.fields) {
+                    if (data.fields.subject && document.getElementById('veo_subject')) document.getElementById('veo_subject').value = data.fields.subject;
+                    if (data.fields.action && document.getElementById('veo_action')) document.getElementById('veo_action').value = data.fields.action;
+                    if (data.fields.fx && document.getElementById('veo_fx')) document.getElementById('veo_fx').value = data.fields.fx;
+                    if (data.fields.setting && document.getElementById('veo_setting')) document.getElementById('veo_setting').value = data.fields.setting;
+                    if (data.fields.camera && document.getElementById('veo_camera')) document.getElementById('veo_camera').value = data.fields.camera;
+                    if (data.fields.sound && document.getElementById('veo_sound')) document.getElementById('veo_sound').value = data.fields.sound;
+                }
+
+                // 2. Post reasoning to Co-Pilot Chat
+                const chatBox = document.getElementById('veoChatBox');
+                if (chatBox) {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.style.margin = '10px 0';
+                    msgDiv.style.padding = '10px';
+                    msgDiv.style.borderRadius = '8px';
+                    msgDiv.style.fontSize = '0.8rem';
+                    msgDiv.style.lineHeight = '1.4';
+                    msgDiv.style.background = 'rgba(16, 185, 129, 0.15)';
+                    msgDiv.style.border = '1px solid #10b981';
+                    msgDiv.innerHTML = `<strong>👁️ Vision-Analyse: ${data.identified_subject || 'Bild analysiert'}</strong><br><br>` +
+                        `Ich habe dein Bild optisch gescannt, das Motiv erkannt und die Formularfelder links automatisch für dich ausgefüllt!<br><br>` +
+                        `Du kannst nun beliebige Werte in den Feldern anpassen oder mir im Chat Fragen stellen!`;
+                    chatBox.appendChild(msgDiv);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+
+                // 3. Render Final I2V Prompt Output
+                const finalPrompt = data.final_i2v_prompt || data;
+                if (veoPromptEl) veoPromptEl.innerText = typeof finalPrompt === 'string' ? finalPrompt : JSON.stringify(finalPrompt, null, 2);
+                if (veoOutput) veoOutput.style.display = 'block';
+
+                showToast(`Vision-Analyse abgeschlossen! Formularfelder befüllt (${data.identified_subject || 'Bild erkannt'}) 🎬`);
+            } else {
+                showToast("Fehler bei Vision-Analyse: " + (data.error || "Unbekannter Fehler"), true);
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Verbindungsfehler: " + e.message, true);
+        } finally {
+            if (btnRun) btnRun.disabled = false;
+            if (spinner) spinner.style.display = 'none';
+        }
     };
 
     window.askVeoAdv = async function() {

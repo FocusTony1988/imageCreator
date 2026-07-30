@@ -244,10 +244,158 @@ def run_copilot():
         return jsonify({
             "reasoning": "Der Co-Pilot hat deine Idee verarbeitet und grundlegende Einstellungen gewählt.",
             "fields": {
-                "sceneType": "cinematic realism",
-                "detailLevel": "8k raw photo, extreme detail, no smoothing, uncompressed"
+                "sceneType": "cinematic realism"
             }
         })
+
+@app.route('/api/analyze-image', methods=['POST'])
+def analyze_image():
+    """Vision-Endpoint: Gemini 3.5 Flash Lite analysiert ein hochgeladenes Bild optisch für I2V."""
+    data = request.json
+    image_base64 = data.get('image', '')
+    user_hint = data.get('hint', '')
+    lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+    
+    if not image_base64:
+        return jsonify({"error": "Kein Bild übergeben"}), 400
+
+    print("[Vision Engine] Analyzing uploaded image with Gemini 3.5 Flash Lite Vision...")
+    
+    sys_prompt = (
+        "Du bist ein optischer Vision-KI-Experte und Prompt-Engineer für Image-to-Video (I2V) Systeme (Veo 3.1, Runway Gen-3, Luma, Kling AI).\n"
+        "DEINE AUFGABE:\n"
+        "Betrachte das übergebene Bild genau und analysiere es vollständig. Fülle die Formularfelder für die UI aus UND erstelle den perfekten englischen ANIMATION & CAMERA PROMPT, um genau dieses vorliegende Bild flüssig in Bewegung zu versetzen.\n\n"
+        "I2V VISION-REGELN:\n"
+        "1. KENNZEICHNE DAS HAUPTMOTIV: Identifiziere das Hauptmotiv im Bild (z.B. ein Fahrzeug, eine Person, eine Shampooflasche, ein Gebäude, ein Drache, ein Gericht).\n"
+        "2. NIEMALS DAS AUSSEHEN NEU BESCHREIBEN: Beschreibe NICHT, welche Farbe, Kleidung oder Form das Motiv hat (das Bild zeigt es bereits!).\n"
+        "3. FOKUS AUF BEWEGUNG & KAMERA: Beschreibe exakt, welche Kamerabewegung stattfindet und wie sich das Hauptmotiv und die Umwelt ab Sekunde 0 bewegen.\n"
+        "4. PASSENDE PHYSIK & SOUND: Füge Partikel, Lichtwechsel, Motion Blur und ein authentisches Sound-Design hinzu.\n\n"
+        "FORMAT (Erstelle AUSSCHLIESSLICH dieses englische JSON):\n"
+        "{\n"
+        "  \"identified_subject\": \"Kurze deutsche Bezeichnung des erkannten Motivs im Bild (z.B. 'Historische Schiffsszene bei Sturm')\",\n"
+        "  \"fields\": {\n"
+        "    \"subject\": \"Neutrales Hauptmotiv auf Englisch (z.B. 'The central couple / ship')\",\n"
+        "    \"action\": \"Dynamische Bewegung/Animation aus dem Bild auf Englisch\",\n"
+        "    \"fx\": \"Umwelt-Physik, Partikel & Gischt auf Englisch\",\n"
+        "    \"setting\": \"Beleuchtung & Atmosphäre aus dem Bild auf Englisch\",\n"
+        "    \"camera\": \"Kamerabewegung auf Englisch\",\n"
+        "    \"sound\": \"Authentisches Sound Design auf Englisch\"\n"
+        "  },\n"
+        "  \"camera_movement\": \"Beschreibung der Kamerabewegung auf Englisch\",\n"
+        "  \"subject_motion\": \"Beschreibung der Bewegung des neutralen Hauptmotivs auf Englisch\",\n"
+        "  \"environment_physics\": \"Partikel, Licht, Wetter & Physik auf Englisch\",\n"
+        "  \"sound_design\": \"Passendes Sound Design auf Englisch\",\n"
+        "  \"final_i2v_prompt\": \"Camera movement: [Kamera]. Subject motion: [Bewegung]. Environment physics and particles: [Physik]. Sound design: [Sound].\"\n"
+        "}"
+    )
+
+    # Format message with vision image payload for OpenAI client (Gemini format)
+    content_list = []
+    if user_hint:
+        content_list.append({"type": "text", "text": f"Zusätzlicher Wunsch des Nutzers für die Animation: {user_hint}"})
+    content_list.append({
+        "type": "image_url",
+        "image_url": {
+            "url": image_base64 if image_base64.startswith("data:") else f"data:image/jpeg;base64,{image_base64}"
+        }
+    })
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": content_list}
+    ]
+
+    res_text = get_ai_response(messages, model='gemini-3.5-flash-lite', temperature=0.3, lm_studio_base=lm_url)
+
+    if not res_text:
+        return jsonify({"error": "Leere Antwort der KI-Vision Engine."}), 500
+
+    try:
+        clean_json = res_text.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+        parsed = json.loads(clean_json)
+        return jsonify(parsed)
+    except Exception as e:
+        print(f"[Vision Error] JSON Parse Error: {e}\nRaw: {res_text}")
+        return jsonify({
+            "identified_subject": "Hochgeladenes Startbild",
+            "final_i2v_prompt": res_text
+        })
+
+@app.route('/api/analyze-cine-image', methods=['POST'])
+def analyze_cine_image():
+    """Vision/JSON-Endpoint für Cinema Edit: Gemini 3.5 Flash Lite liest Bild oder JSON und stellt das Virtual Rig ein."""
+    data = request.json
+    image_base64 = data.get('image', '')
+    json_input = data.get('json_data', None)
+    lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+
+    print("[Cinema Vision Engine] Analyzing reference image/JSON with Gemini 3.5 Flash Lite Vision...")
+
+    sys_prompt = (
+        "Du bist ein professioneller Director of Photography (DoP) und Vision-KI-Experte.\n"
+        "DEINE AUFGABE:\n"
+        "Analysiere das übergebene Bild (oder die Prompt-JSON) und schätze die exakten Kamera-, Linsen-, Licht- und Kompositions-Einstellungen ab. "
+        "Fülle auch die Motiv-Beschreibung (scene_description) vollständig auf Englisch aus.\n\n"
+        "VERFÜGBARE WERTE FÜR RIG:\n"
+        "- camera: 'alexa35' (ARRI Alexa 35), 'red_vaptor' (RED V-Raptor), 'panavision' (Panavision DXL2), 'venice' (Sony Venice), 'imax' (IMAX 70mm), 'vhs' (VHS Analog)\n"
+        "- lens: 'arri_sig' (ARRI Signature), 'cooke' (Cooke S4), 'canon_k35' (Canon K35), 'pana_c' (Anamorphic C-Series)\n"
+        "- focal: '14mm', '24mm', '35mm', '50mm', '85mm'\n"
+        "- aperture: 'f1.4', 'f2.8', 'f8'\n\n"
+        "FORMAT (Erstelle AUSSCHLIESSLICH dieses JSON):\n"
+        "{\n"
+        "  \"identified_concept\": \"Kurzer deutscher Titel des erkannten Bildkonzepts\",\n"
+        "  \"scene_description\": \"Ausführliche englische Beschreibung des Motivs und der Stimmung auf dem Bild\",\n"
+        "  \"rig\": {\n"
+        "    \"camera\": \"alexa35|red_vaptor|panavision|venice|imax|vhs\",\n"
+        "    \"lens\": \"arri_sig|cooke|canon_k35|pana_c\",\n"
+        "    \"focal\": \"14mm|24mm|35mm|50mm|85mm\",\n"
+        "    \"aperture\": \"f1.4|f2.8|f8\"\n"
+        "  }\n"
+        "}"
+    )
+
+    if json_input:
+        content_list = f"Hier ist die hochgeladene/übergebene JSON-Datei des Nutzers:\n{json.dumps(json_input, indent=2)}"
+    elif image_base64:
+        content_list = [
+            {"type": "text", "text": "Analysiere dieses Referenzbild optisch und wähle das perfekte Kamera-Rig sowie die Motivbeschreibung."},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": image_base64 if image_base64.startswith("data:") else f"data:image/jpeg;base64,{image_base64}"
+                }
+            }
+        ]
+    else:
+        return jsonify({"error": "Weder Bild noch JSON übergeben"}), 400
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": content_list}
+    ]
+
+    res_text = get_ai_response(messages, model='gemini-3.5-flash-lite', temperature=0.3, lm_studio_base=lm_url)
+
+    if not res_text:
+        return jsonify({"error": "Leere Antwort von Gemini 3.5 Flash Lite."}), 500
+
+    try:
+        clean_json = res_text.strip()
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+        parsed = json.loads(clean_json)
+        return jsonify(parsed)
+    except Exception as e:
+        print(f"[Cinema Vision Error] JSON Parse Error: {e}\nRaw: {res_text}")
+        return jsonify({"error": "Konnte Antwort nicht als JSON parsen", "raw": res_text}), 500
 
 @app.route('/api/generate', methods=['POST'])
 def generate_solution():
