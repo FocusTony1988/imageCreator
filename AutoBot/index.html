@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AutoBot Workspace | Professional AI Agents</title>
+    
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- PDF & Markdown Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           1. DESIGN TOKENS & VARIABLES
+           ========================================================================== */
+        :root {
+            /* App Theme (Dark/Glass) */
+            --bg-dark: #0a0a0f;
+            --bg-glow: radial-gradient(circle at 50% -10%, rgba(99, 102, 241, 0.15), transparent 70%);
+            --card-bg: rgba(18, 18, 26, 0.75);
+            --card-border: rgba(255, 255, 255, 0.08);
+            
+            /* Typography */
+            --font-main: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'Fira Code', monospace;
+            
+            /* Text Colors */
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            /* Brand Colors */
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.3);
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            
+            /* Document Output Variables (A4 Light Theme) */
+            --doc-bg: #ffffff;
+            --doc-text: #1e293b;
+            --doc-border: #e2e8f0;
+            --doc-code-bg: #f1f5f9;
+        }
+
+        /* ==========================================================================
+           2. GLOBAL RESETS & LAYOUT
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            background-image: var(--bg-glow);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            line-height: 1.6;
+            position: relative;
+        }
+        
+        .app-container {
+            width: 100%;
+            max-width: 950px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        /* ==========================================================================
+           3. HEADER & NAVIGATION
+           ========================================================================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .brand h1 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e0e7ff 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .brand p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .model-selector {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            padding: 8px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .model-selector label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        
+        .model-selector select {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .model-selector select option {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+
+        /* Mode Switch Toggle Button */
+        .mode-toggle-btn {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--accent);
+            color: #c7d2fe;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mode-toggle-btn.classic {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--card-border);
+            color: var(--text-secondary);
+        }
+
+        /* ==========================================================================
+           4. WIZARD STEPPER
+           ========================================================================== */
+        .stepper {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            padding: 0 10px;
+        }
+        
+        .stepper::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 5%;
+            right: 5%;
+            height: 2px;
+            background: var(--card-border);
+            z-index: 1;
+        }
+        
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+            flex: 1;
+            gap: 10px;
+        }
+        
+        .step-bubble {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #0f111a;
+            border: 2px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        
+        .step-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        
+        .step.active .step-bubble {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        
+        .step.active .step-label {
+            color: var(--text-primary);
+        }
+        
+        .step.completed .step-bubble {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+            box-shadow: 0 0 15px var(--success-glow);
+            font-size: 0;
+        }
+        .step.completed .step-bubble::after {
+            content: '✓';
+            font-size: 1.1rem;
+        }
+        
+        .step.completed .step-label {
+            color: var(--success);
+        }
+
+        /* ==========================================================================
+           5. FORMS, INPUTS & BUTTONS
+           ========================================================================== */
+        .view-pane {
+            display: none;
+            animation: fadeSlideUp 0.4s ease forwards;
+        }
+        
+        .view-pane.active {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-group label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .shortcut-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            background: rgba(255,255,255,0.05);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            line-height: 1.6;
+            resize: none;
+            overflow: hidden;
+            outline: none;
+            min-height: 120px;
+        }
+        
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+        
+        button:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+        
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--card-border);
+            box-shadow: none;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: var(--success);
+            box-shadow: 0 4px 15px var(--success-glow);
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #059669;
+            box-shadow: 0 8px 25px var(--success-glow);
+        }
+
+        /* Spinner animation */
+        .loader {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Idea cards for Step 1 */
+        .ideas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .idea-card {
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            padding: 12px 15px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: #c7d2fe;
+            cursor: pointer;
+        }
+        .idea-card:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        /* Floating Support Chat Widget */
+        .floating-chat-toggle {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: var(--accent);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 10px 25px var(--accent-glow);
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-widget-box {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            right: 25px;
+            width: 340px;
+            height: 420px;
+            background: #0d0f18;
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            z-index: 1000;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-widget-box.open { display: flex; }
+        .chat-header {
+            background: rgba(99, 102, 241, 0.15);
+            padding: 14px 18px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #c7d2fe;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .chat-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.85rem;
+        }
+        .chat-msg {
+            padding: 10px 14px;
+            border-radius: 12px;
+            max-width: 85%;
+            word-break: break-word;
+        }
+        .chat-msg.user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+        }
+        .chat-msg.bot {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            align-self: flex-start;
+        }
+        .chat-footer {
+            padding: 12px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            gap: 8px;
+        }
+        .chat-footer input {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        /* ==========================================================================
+           6. WORKFLOW & LIVE AGENT UI (STEP 4)
+           ========================================================================== */
+        .workflow-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .workflow-phase-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            height: 30px;
+        }
+        
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+        
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .agent-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .agent-card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .agent-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .agent-card.active {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.03);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        
+        .agent-card.active .agent-avatar {
+            background: var(--accent);
+            animation: pulseAvatar 1.5s infinite;
+        }
+        
+        @keyframes pulseAvatar {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        
+        .agent-card.completed {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.03);
+        }
+        
+        .agent-card.completed .agent-avatar {
+            background: var(--success);
+        }
+        
+        .agent-info {
+            flex: 1;
+        }
+        
+        .agent-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+        
+        .agent-status {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .review-drawer {
+            display: none;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .review-drawer.open {
+            display: block;
+            animation: fadeSlideUp 0.3s ease;
+        }
+        
+        .toggle-review-btn {
+            background: none;
+            border: none;
+            color: var(--accent);
+            padding: 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: none;
+            align-self: flex-start;
+        }
+        
+        .toggle-review-btn:hover {
+            transform: none;
+            color: var(--text-primary);
+        }
+        
+        /* Terminal Log */
+        .terminal {
+            background: #05050a;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: #a5b4fc;
+            height: 220px;
+            overflow-y: auto;
+            margin-top: 10px;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .terminal-line {
+            margin-bottom: 8px;
+            display: flex;
+            gap: 12px;
+            line-height: 1.4;
+        }
+        
+        .term-time { color: var(--text-muted); flex-shrink: 0; }
+        .term-msg { word-break: break-word; }
+
+        /* ==========================================================================
+           7. WYSIWYG DOCUMENT PREVIEW (STEP 5)
+           ========================================================================== */
+        .result-actions-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .document-preview-wrapper {
+            background: #e2e8f0;
+            padding: 40px;
+            border-radius: 16px;
+            max-height: 600px;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .document-paper {
+            background: var(--doc-bg);
+            color: var(--doc-text);
+            width: 100%;
+            max-width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+        }
+        
+        .document-paper h1, .document-paper h2, .document-paper h3 {
+            color: #111827;
+            font-weight: bold;
+        }
+        
+        .document-paper h1 {
+            font-size: 24pt;
+            border-bottom: 2px solid var(--doc-border);
+            padding-bottom: 10px;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+        
+        .document-paper h2 {
+            font-size: 18pt;
+            border-bottom: 1px solid var(--doc-border);
+            padding-bottom: 8px;
+            margin-top: 35px;
+            margin-bottom: 15px;
+        }
+        
+        .document-paper h3 {
+            font-size: 14pt;
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .document-paper p, .document-paper li {
+            margin-bottom: 15px;
+            color: #334155;
+        }
+        
+        .document-paper ul, .document-paper ol {
+            margin-bottom: 20px;
+            padding-left: 30px;
+        }
+        
+        .document-paper table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+        
+        .document-paper th, .document-paper td {
+            border: 1px solid var(--doc-border);
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .document-paper th {
+            background-color: var(--doc-code-bg);
+            color: #0f172a;
+        }
+        
+        .document-paper pre {
+            background-color: var(--doc-code-bg);
+            border: 1px solid var(--doc-border);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 25px 0;
+            font-family: var(--font-mono);
+            font-size: 9.5pt;
+        }
+        
+        .document-paper code {
+            font-family: var(--font-mono);
+            background-color: var(--doc-code-bg);
+            color: #dc2626;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9.5pt;
+        }
+        
+        .document-paper pre code {
+            background: transparent;
+            color: #1e293b;
+            padding: 0;
+        }
+        
+        .document-paper blockquote {
+            border-left: 4px solid #cbd5e1;
+            padding-left: 20px;
+            margin: 20px 0;
+            color: #64748b;
+            font-style: italic;
+        }
+        
+        .toc-container {
+            background: #f8fafc;
+            border: 1px solid var(--doc-border);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+        .toc-container h2 { margin-top: 0; border: none; padding: 0; font-size: 16pt; }
+        .toc-container ul { margin-bottom: 0; list-style-type: none; padding-left: 0; }
+        .toc-container li { margin-bottom: 8px; }
+        .toc-container a { color: #2563eb; text-decoration: none; }
+
+        #markdownEditor {
+            display: none;
+            width: 100%;
+            height: 500px;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            background: #0f111a;
+            border: 1px solid var(--card-border);
+            padding: 20px;
+            border-radius: 16px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Header -->
+    <header class="header">
+        <div class="brand">
+            <h1>🤖 AutoBot</h1>
+            <p>Professional AI Multi-Agent Workspace</p>
+        </div>
+        <div class="header-controls">
+            <!-- Mode Switch Button -->
+            <button id="modeToggleBtn" class="mode-toggle-btn" onclick="UI.toggleMode()">
+                ⚡ Smart Co-Pilot (Aktiv)
+            </button>
+            <div class="model-selector">
+                <label>Modell</label>
+                <select id="modelSelect">
+                    <option value="gemini-3.6-flash" selected>Gemini 3.6 Flash</option>
+                    <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                    <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    <option value="lm-studio">LM Studio (Lokal)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stepper Navigation -->
+    <div class="stepper">
+        <div class="step active" id="st1"><div class="step-bubble">1</div><div class="step-label">Analyse</div></div>
+        <div class="step" id="st2"><div class="step-bubble">2</div><div class="step-label">Verfeinerung</div></div>
+        <div class="step" id="st3"><div class="step-bubble">3</div><div class="step-label">Interaktion</div></div>
+        <div class="step" id="st4"><div class="step-bubble">4</div><div class="step-label">KI-Workflow</div></div>
+        <div class="step" id="st5"><div class="step-bubble">5</div><div class="step-label">Report</div></div>
+    </div>
+
+    <!-- ==================== STEP 1: INITIAL GOAL ==================== -->
+    <div id="view1" class="view-pane active">
+        <div class="input-group">
+            <label>
+                Beschreibe dein Vorhaben oder Problem:
+                <span class="shortcut-hint">Strg + Enter zum Senden</span>
+            </label>
+            <textarea id="rawGoal" placeholder="Beispiel: Ich benötige eine umfassende Marketingstrategie für eine neue B2B Softwarelösung im Handwerksbereich..."></textarea>
+        </div>
+
+        <!-- Co-Pilot Idea Generator (Visible in Co-Pilot Mode) -->
+        <div id="copilotIdeasPanel" style="margin-top: -10px;">
+            <button class="btn-secondary" style="font-size: 0.8rem; padding: 6px 14px;" onclick="UI.suggestIdeas()">
+                💡 3 KI-Ideen vorschlagen (Flash Lite) <span class="loader" style="display:none;" id="spinIdeas"></span>
+            </button>
+            <div id="ideasContainer" class="ideas-grid" style="display:none;"></div>
+        </div>
+
+        <div class="actions">
+            <button id="btnOpt" onclick="UI.optimizePrompt()">
+                Ziel optimieren <span class="loader" style="display:none;" id="spin1"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 2: REFINED PROMPT ==================== -->
+    <div id="view2" class="view-pane">
+        <div class="input-group">
+            <label>
+                Technischer Prompt (automatisch optimiert):
+                <span class="shortcut-hint">Strg + Enter zum Senden</span>
+            </label>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">Passe den generierten Prompt bei Bedarf manuell an.</p>
+            <textarea id="optimizedGoal"></textarea>
+        </div>
+        <div class="actions">
+            <button class="btn-secondary" onclick="UI.navigate(1)">Zurück</button>
+            <button id="btnInt" onclick="UI.getQuestions()">
+                Bedarfsanalyse starten <span class="loader" style="display:none;" id="spin2"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 3: ANALYST INTERACTION ==================== -->
+    <div id="view3" class="view-pane">
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 20px; border-radius: 16px;">
+            <h3 style="color: #c7d2fe; font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                🕵️ Leitender Analyst fordert Details an
+            </h3>
+            <div id="questionsBox" style="font-size: 0.95rem; line-height: 1.8;"></div>
+        </div>
+        
+        <div class="input-group">
+            <label>
+                Deine Antworten:
+                <span class="shortcut-hint">Strg + Enter zum Senden</span>
+            </label>
+            <!-- Co-Pilot Smart Auto-Fill Button -->
+            <div id="copilotAutofillPanel" style="margin-bottom: 5px;">
+                <button class="btn-secondary" style="font-size: 0.8rem; padding: 6px 14px;" onclick="UI.autoFillAnswers()">
+                    ✨ Antworten mit KI vorschlagen (Flash Lite) <span class="loader" style="display:none;" id="spinAutoFill"></span>
+                </button>
+            </div>
+            <textarea id="userAnswers" placeholder="1. Antwort...&#10;2. Antwort..."></textarea>
+        </div>
+        
+        <div class="actions">
+            <button class="btn-secondary" onclick="UI.navigate(2)">Zurück</button>
+            <button id="btnRun" onclick="Workflow.start()">
+                Agenten-Workflow auslösen 🚀
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 4: LIVE WORKFLOW ==================== -->
+    <div id="view4" class="view-pane">
+        <div class="workflow-header">
+            <div class="workflow-phase-text" id="wfPhase">System wird initialisiert...</div>
+            <div class="progress-track"><div class="progress-fill" id="wfProgress"></div></div>
+        </div>
+
+        <div class="agent-grid" id="agentBoard">
+            <!-- Dynamically populated Agent Cards -->
+        </div>
+
+        <div class="terminal" id="terminalLog"></div>
+    </div>
+
+    <!-- ==================== STEP 5: FINAL REPORT (DOCUMENT PREVIEW) ==================== -->
+    <div id="view5" class="view-pane">
+        <div class="result-actions-bar">
+            <h2 style="color: var(--success); display: flex; align-items: center; gap: 10px;">
+                🏆 Bericht erfolgreich generiert
+            </h2>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="DocumentManager.toggleEditMode()" id="btnEditToggle">✏️ Bearbeiten</button>
+                <button class="btn-secondary" onclick="DocumentManager.copyMarkdown()">📋 Copy MD</button>
+                <button class="btn-success" onclick="DocumentManager.exportPDF()">📄 PDF Drucken</button>
+            </div>
+        </div>
+        
+        <!-- Editable Markdown Area -->
+        <textarea id="markdownEditor"></textarea>
+        
+        <!-- WYSIWYG A4 Preview Container -->
+        <div class="document-preview-wrapper" id="previewWrapper">
+            <div class="document-paper" id="documentPaper">
+                <!-- Content injected here via Marked.js -->
+            </div>
+        </div>
+        
+        <div class="actions" style="margin-top: 10px; justify-content: flex-start;">
+            <button class="btn-secondary" onclick="location.reload()">🔄 Neues Projekt starten</button>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Co-Pilot Support Chat Widget -->
+<div id="copilotChatToggle" class="floating-chat-toggle" onclick="UI.toggleChat()">
+    💬 Support Co-Pilot
+</div>
+<div id="copilotChatBox" class="chat-widget-box">
+    <div class="chat-header">
+        <span>🤖 Support-Agent (Flash Lite)</span>
+        <button style="background:none;border:none;color:white;cursor:pointer;padding:0;" onclick="UI.toggleChat()">✕</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="chat-msg bot">Hallo! Ich bin dein KI-Co-Pilot. Brauchst du Hilfe beim Ausfüllen oder Umformulieren?</div>
+    </div>
+    <div class="chat-footer">
+        <input type="text" id="chatInput" placeholder="Frage stellen..." onkeydown="if(event.key==='Enter') UI.sendChatMessage()">
+        <button class="btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="UI.sendChatMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    /* ==========================================================================
+       1. GLOBAL UTILS & UI MANAGER
+       ========================================================================== */
+    const UI = {
+        mode: 'copilot', // 'copilot' vs 'classic'
+
+        init() {
+            // Auto-expanding textareas
+            document.querySelectorAll('textarea').forEach(el => {
+                el.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+            });
+
+            // Ctrl+Enter global handler for active step
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    const activeView = document.querySelector('.view-pane.active').id;
+                    if (activeView === 'view1') document.getElementById('btnOpt').click();
+                    if (activeView === 'view2') document.getElementById('btnInt').click();
+                    if (activeView === 'view3') document.getElementById('btnRun').click();
+                }
+            });
+
+            this.updateModeUI();
+        },
+
+        toggleMode() {
+            this.mode = this.mode === 'copilot' ? 'classic' : 'copilot';
+            this.updateModeUI();
+        },
+
+        updateModeUI() {
+            const btn = document.getElementById('modeToggleBtn');
+            const ideasPanel = document.getElementById('copilotIdeasPanel');
+            const autofillPanel = document.getElementById('copilotAutofillPanel');
+            const chatToggle = document.getElementById('copilotChatToggle');
+            const chatBox = document.getElementById('copilotChatBox');
+
+            if (this.mode === 'copilot') {
+                btn.className = 'mode-toggle-btn';
+                btn.innerHTML = '⚡ Smart Co-Pilot (Aktiv)';
+                ideasPanel.style.display = 'block';
+                autofillPanel.style.display = 'block';
+                chatToggle.style.display = 'flex';
+            } else {
+                btn.className = 'mode-toggle-btn classic';
+                btn.innerHTML = '🟢 Klassische Version (Alte Version)';
+                ideasPanel.style.display = 'none';
+                autofillPanel.style.display = 'none';
+                chatToggle.style.display = 'none';
+                chatBox.classList.remove('open');
+            }
+        },
+
+        toggleChat() {
+            const box = document.getElementById('copilotChatBox');
+            box.classList.toggle('open');
+        },
+
+        async sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if(!msg) return;
+            
+            const body = document.getElementById('chatBody');
+            body.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+
+            const res = await this.apiCall('/api/support/chat', {
+                message: msg,
+                context: document.getElementById('rawGoal').value
+            });
+
+            if (res && res.reply) {
+                body.innerHTML += `<div class="chat-msg bot">${res.reply}</div>`;
+                body.scrollTop = body.scrollHeight;
+            }
+        },
+
+        async suggestIdeas() {
+            const goalInput = document.getElementById('rawGoal');
+            const keyword = goalInput.value.trim() || 'Software Marketing Strategie';
+            
+            document.getElementById('spinIdeas').style.display = 'inline-block';
+            const res = await this.apiCall('/api/support/ideas', { keyword: keyword });
+            document.getElementById('spinIdeas').style.display = 'none';
+
+            if (res && res.ideas && res.ideas.length) {
+                const container = document.getElementById('ideasContainer');
+                container.style.display = 'grid';
+                container.innerHTML = res.ideas.map((idea, i) => `
+                    <div class="idea-card" onclick="UI.applyIdea(${i})">
+                        <strong>Idee ${i+1}:</strong> ${idea}
+                    </div>
+                `).join('');
+                this.currentIdeas = res.ideas;
+            }
+        },
+
+        applyIdea(idx) {
+            if (this.currentIdeas && this.currentIdeas[idx]) {
+                const el = document.getElementById('rawGoal');
+                el.value = this.currentIdeas[idx];
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+            }
+        },
+
+        async autoFillAnswers() {
+            const questions = document.getElementById('questionsBox').innerText;
+            const goal = document.getElementById('optimizedGoal').value;
+            
+            document.getElementById('spinAutoFill').style.display = 'inline-block';
+            const res = await this.apiCall('/api/support/autofill', { questions: questions, goal: goal });
+            document.getElementById('spinAutoFill').style.display = 'none';
+
+            if (res && res.answers) {
+                const el = document.getElementById('userAnswers');
+                el.value = res.answers;
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+            }
+        },
+
+        navigate(stepNum) {
+            document.querySelectorAll('.view-pane').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view${stepNum}`).classList.add('active');
+            
+            document.querySelectorAll('.step').forEach((el, idx) => {
+                const step = idx + 1;
+                el.className = 'step';
+                if (step < stepNum) el.classList.add('completed');
+                if (step === stepNum) el.classList.add('active');
+            });
+        },
+
+        async apiCall(endpoint, payload) {
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return await res.json();
+            } catch (err) {
+                alert("Verbindungsfehler! Läuft der Flask-Server (app.py)?");
+                console.error(err);
+                return null;
+            }
+        },
+
+        async optimizePrompt() {
+            const goal = document.getElementById('rawGoal').value;
+            if (!goal.trim()) return;
+            
+            document.getElementById('btnOpt').disabled = true;
+            document.getElementById('spin1').style.display = 'inline-block';
+            
+            const data = await this.apiCall('/api/optimize', {
+                goal: goal,
+                model: document.getElementById('modelSelect').value
+            });
+            
+            document.getElementById('btnOpt').disabled = false;
+            document.getElementById('spin1').style.display = 'none';
+            
+            if (data && data.optimized_goal) {
+                const el = document.getElementById('optimizedGoal');
+                el.value = data.optimized_goal;
+                this.navigate(2);
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+            }
+        },
+
+        async getQuestions() {
+            const goal = document.getElementById('optimizedGoal').value;
+            document.getElementById('btnInt').disabled = true;
+            document.getElementById('spin2').style.display = 'inline-block';
+            
+            const data = await this.apiCall('/api/interrogate', {
+                goal: goal,
+                model: document.getElementById('modelSelect').value
+            });
+            
+            document.getElementById('btnInt').disabled = false;
+            document.getElementById('spin2').style.display = 'none';
+            
+            if (data && data.questions) {
+                const html = data.questions.split('\n')
+                    .filter(l => l.trim())
+                    .map(l => `<div style="margin-bottom: 8px;">${l}</div>`)
+                    .join('');
+                document.getElementById('questionsBox').innerHTML = html;
+                this.navigate(3);
+            }
+        }
+    };
+
+    /* ==========================================================================
+       2. WORKFLOW MANAGER (SSE STREAM)
+       ========================================================================== */
+    const Workflow = {
+        state: { experts: [], totalSteps: 8, currentStep: 0 },
+
+        async start() {
+            UI.navigate(4);
+            this.resetBoard();
+            
+            const payload = {
+                goal: document.getElementById('optimizedGoal').value,
+                answers: document.getElementById('userAnswers').value,
+                model: document.getElementById('modelSelect').value
+            };
+            
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed.startsWith('data: ')) continue;
+                        try {
+                            this.handleEvent(JSON.parse(trimmed.slice(6)));
+                        } catch (e) { console.error("JSON parse error:", e); }
+                    }
+                }
+            } catch (err) {
+                this.log(`🔴 SYSTEM-FEHLER: ${err.message}`);
+            }
+        },
+
+        resetBoard() {
+            this.state.currentStep = 0;
+            this.updateProgress(0, "System initialisiert...");
+            document.getElementById('agentBoard').innerHTML = '';
+            document.getElementById('terminalLog').innerHTML = '';
+        },
+
+        updateProgress(stepIncrement, phaseText) {
+            this.state.currentStep += stepIncrement;
+            const percent = Math.min(100, Math.round((this.state.currentStep / this.state.totalSteps) * 100));
+            document.getElementById('wfProgress').style.width = percent + '%';
+            if (phaseText) document.getElementById('wfPhase').textContent = phaseText;
+        },
+
+        log(msg) {
+            const term = document.getElementById('terminalLog');
+            const time = new Date().toLocaleTimeString();
+            term.innerHTML += `<div class="terminal-line"><span class="term-time">[${time}]</span><span class="term-msg">${msg}</span></div>`;
+            term.scrollTop = term.scrollHeight;
+        },
+
+        handleEvent(data) {
+            if (data.event === 'log') {
+                this.log(data.message);
+            } 
+            else if (data.event === 'experts') {
+                this.state.experts = data.experts;
+                this.updateProgress(1, "Lead Architect analysiert...");
+                this.renderAgentCards();
+            } 
+            else if (data.event === 'draft') {
+                this.updateProgress(1, "Expertengremium tagt...");
+                this.setAgentStatus(0, 'completed', 'Entwurf fertiggestellt');
+                if(this.state.experts.length > 1) this.setAgentStatus(1, 'active', 'Analysiert Entwurf...');
+            } 
+            else if (data.event === 'review') {
+                this.updateProgress(1, `Gutachten von ${data.role} empfangen...`);
+                const idx = this.state.experts.indexOf(data.role);
+                if (idx > 0) {
+                    this.setAgentStatus(idx, 'completed', 'Gutachten abgeschlossen');
+                    this.attachReviewDrawer(idx, data.content);
+                    if (idx + 1 < this.state.experts.length) {
+                        this.setAgentStatus(idx + 1, 'active', 'Analysiert Entwurf...');
+                    } else {
+                        this.updateProgress(1, "Finaler Master Merge...");
+                        this.setAgentStatus(0, 'active', 'Integriert Feedback...');
+                    }
+                }
+            } 
+            else if (data.event === 'final') {
+                this.updateProgress(2, "Workflow abgeschlossen! 🎉");
+                this.setAgentStatus(0, 'completed', 'Finaler Report generiert');
+                
+                DocumentManager.loadResult(data.markdown);
+                setTimeout(() => UI.navigate(5), 1500);
+            }
+        },
+
+        renderAgentCards() {
+            const board = document.getElementById('agentBoard');
+            let html = '';
+            html += this.createCardHTML(0, 'LA', 'Lead Architect', 'active', 'Erstellt Erstentwurf...');
+            for (let i = 1; i < this.state.experts.length; i++) {
+                const initials = this.state.experts[i].substring(0,2).toUpperCase();
+                html += this.createCardHTML(i, initials, this.state.experts[i], '', 'Wartet auf Entwurf...');
+            }
+            board.innerHTML = html;
+        },
+
+        createCardHTML(idx, initials, name, stateClass, statusText) {
+            return `
+                <div class="agent-card ${stateClass}" id="ag-card-${idx}">
+                    <div class="agent-card-header">
+                        <div class="agent-avatar">${initials}</div>
+                        <div class="agent-info">
+                            <div class="agent-name">${name}</div>
+                            <div class="agent-status" id="ag-status-${idx}">${statusText}</div>
+                        </div>
+                    </div>
+                    <button class="toggle-review-btn" id="ag-btn-${idx}" style="display:none;" onclick="Workflow.toggleReview(${idx})">📄 Gutachten lesen</button>
+                    <div class="review-drawer" id="ag-drawer-${idx}"></div>
+                </div>
+            `;
+        },
+
+        setAgentStatus(idx, stateClass, text) {
+            const card = document.getElementById(`ag-card-${idx}`);
+            const status = document.getElementById(`ag-status-${idx}`);
+            if(!card) return;
+            
+            card.className = `agent-card ${stateClass}`;
+            let icon = stateClass === 'active' ? '<div class="loader" style="width:12px;height:12px;border-width:2px;border-color:rgba(99,102,241,0.5);border-top-color:var(--accent);"></div>' : 
+                       stateClass === 'completed' ? '✓' : '';
+            status.innerHTML = `${icon} ${text}`;
+        },
+
+        attachReviewDrawer(idx, markdownContent) {
+            const btn = document.getElementById(`ag-btn-${idx}`);
+            const drawer = document.getElementById(`ag-drawer-${idx}`);
+            btn.style.display = 'block';
+            drawer.innerHTML = marked.parse(markdownContent);
+        },
+
+        toggleReview(idx) {
+            document.getElementById(`ag-drawer-${idx}`).classList.toggle('open');
+        }
+    };
+
+    /* ==========================================================================
+       3. DOCUMENT MANAGER & PDF EXPORT
+       ========================================================================== */
+    const DocumentManager = {
+        rawMarkdown: '',
+        isEditMode: false,
+
+        loadResult(md) {
+            this.rawMarkdown = md;
+            document.getElementById('markdownEditor').value = md;
+            this.renderPaper();
+        },
+
+        renderPaper() {
+            let html = marked.parse(this.rawMarkdown);
+            html = this.generateTOC(html);
+            document.getElementById('documentPaper').innerHTML = html;
+        },
+
+        generateTOC(htmlString) {
+            const temp = document.createElement('div');
+            temp.innerHTML = htmlString;
+            const headings = temp.querySelectorAll('h1, h2, h3');
+            
+            if (headings.length < 2) return htmlString;
+            
+            let tocHTML = '<div class="toc-container"><h2>Inhaltsverzeichnis</h2><ul>';
+            headings.forEach((h, i) => {
+                const id = 'heading-' + i;
+                h.id = id;
+                const level = parseInt(h.tagName.charAt(1));
+                const indent = (level - 1) * 20;
+                tocHTML += `<li style="margin-left: ${indent}px"><a href="#${id}">${h.textContent}</a></li>`;
+            });
+            tocHTML += '</ul></div>';
+            return tocHTML + temp.innerHTML;
+        },
+
+        toggleEditMode() {
+            const editor = document.getElementById('markdownEditor');
+            const preview = document.getElementById('previewWrapper');
+            const btn = document.getElementById('btnEditToggle');
+            
+            this.isEditMode = !this.isEditMode;
+            if (this.isEditMode) {
+                editor.style.display = 'block';
+                preview.style.display = 'none';
+                btn.innerHTML = '👁️ Vorschau';
+                editor.style.height = 'auto';
+                editor.style.height = editor.scrollHeight + 'px';
+            } else {
+                editor.style.display = 'none';
+                preview.style.display = 'flex';
+                btn.innerHTML = '✏️ Bearbeiten';
+                this.rawMarkdown = editor.value;
+                this.renderPaper();
+            }
+        },
+
+        copyMarkdown() {
+            navigator.clipboard.writeText(this.rawMarkdown).then(() => {
+                alert("Markdown kopiert!");
+            });
+        },
+
+        exportPDF() {
+            if (this.isEditMode) this.toggleEditMode();
+            
+            const element = document.getElementById('documentPaper');
+            
+            const opt = {
+                margin:       15,
+                filename:     'AutoBot_Report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
+                const totalPages = pdf.internal.getNumberOfPages();
+                const dateStr = new Date().toLocaleDateString('de-DE');
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    pdf.setPage(i);
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(150);
+                    
+                    pdf.text('AutoBot - Professional Agent Report', 15, 10);
+                    pdf.text(`Erstellt am: ${dateStr}`, 15, pdf.internal.pageSize.getHeight() - 10);
+                    pdf.text(`Seite ${i} von ${totalPages}`, pdf.internal.pageSize.getWidth() - 30, pdf.internal.pageSize.getHeight() - 10);
+                }
+            }).save().catch(err => {
+                console.error("PDF Error:", err);
+                alert("Fehler beim Exportieren des PDFs.");
+            });
+        }
+    };
+
+    window.onload = () => UI.init();
+
+</script>
+</body>
+</html>

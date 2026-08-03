@@ -30,6 +30,11 @@
                 <button class="nav-btn" onclick="switchTab('edit')"><i class="fa-solid fa-eraser"></i> Edit & Inpaint</button>
                 <button class="nav-btn" onclick="switchTab('cinema')"><i class="fa-solid fa-film"></i> Cinema Edit</button>
                 <button class="nav-btn" onclick="switchTab('watermark')"><i class="fa-solid fa-droplet-slash"></i> Watermark Remover</button>
+                <button class="nav-btn" onclick="switchTab('autobot')"><i class="fa-solid fa-clapperboard" style="color:var(--accent);"></i> AutoBot Storyboard</button>
+                
+                <a href="/download-manual" download target="_blank" class="nav-btn" style="background: linear-gradient(135deg, rgba(79,70,229,0.3), rgba(16,185,129,0.3)); border: 1px solid var(--primary); color: #fff; margin-top: 12px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 0.8rem; border-radius: 8px; padding: 10px; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-file-pdf" style="color: #ef4444; font-size: 1.1rem;"></i> <span>📄 Kamera & Prompt Handbuch (PDF)</span>
+                </a>
             </div>
         </div>
 
@@ -84,6 +89,10 @@
                     <p>High-Fidelity Prompt Engineering angetrieben durch dein lokales LM Studio.</p>
                 </div>
                 <div style="background:var(--bg-input); padding:4px; border-radius:8px; display:flex; gap:5px; align-items:center;">
+                    <a href="/download-manual" download target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:6px 12px; border-color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i> Handbuch (PDF)
+                    </a>
+                    <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 3px;"></div>
                     <button class="btn btn-magic" style="font-size:0.75rem; padding:6px 12px;" onclick="randomizeForm()"><i class="fa-solid fa-shuffle"></i> Randomize</button>
                     <div style="width: 1px; height: 20px; background: var(--border-color); margin: 0 5px;"></div>
                     <button id="modePhoto" class="btn btn-primary" style="font-size:0.75rem; padding:6px 12px;" onclick="setGenMode('photo')"><i class="fa-regular fa-image"></i> Foto</button>
@@ -547,12 +556,15 @@
                         </p>
 
                         <input type="file" id="cineVisionInput" accept="image/*,.json" onchange="handleCineVisionUpload(event)" style="display: none;">
-                        <div style="display: flex; gap: 8px;">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button type="button" id="cineDropBtn" class="btn btn-secondary" onclick="document.getElementById('cineVisionInput').click()" style="flex: 1; border: 1px dashed var(--border-color); padding: 10px; background: rgba(0,0,0,0.2); font-size: 0.75rem;">
                                 <i class="fa-solid fa-cloud-arrow-up" style="color: var(--primary);"></i> <span id="cineUploadLabel">Bild / JSON hierhin ziehen oder wählen</span>
                             </button>
-                            <button type="button" id="btnRunCineVision" class="btn btn-magic" onclick="runCineVisionAnalysis()" style="display: none; padding: 10px 14px; font-size: 0.75rem; background: linear-gradient(135deg, #10b981, #3b82f6);">
+                            <button type="button" id="btnRunCineVision" class="btn btn-magic" onclick="runCineVisionAnalysis()" style="display: none; padding: 10px 14px; font-size: 0.75rem; background: linear-gradient(135deg, #3b82f6, #6366f1);">
                                 <span class="spinner" id="cineVisionSpinner" style="display:none;"></span> 👁️ Analysieren & Auto-Rig
+                            </button>
+                            <button type="button" id="btnRunCineI2vDirect" class="btn btn-primary" onclick="optimizeCinePrompt('i2v')" style="display: none; padding: 10px 14px; font-size: 0.75rem; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: bold;">
+                                <i class="fa-solid fa-video"></i> 🖼️ Image-to-Video (I2V) Prompt
                             </button>
                         </div>
 
@@ -632,12 +644,15 @@
                         </select>
                     </div>
                     
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <button class="btn btn-secondary" style="flex:1;" onclick="updateNanoPrompts()">
-                            <i class="fa-solid fa-rotate"></i> Aktualisieren
+                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" style="padding:8px;" onclick="updateNanoPrompts()" title="Live-Vorschau refreshen">
+                            <i class="fa-solid fa-rotate"></i>
                         </button>
-                        <button class="btn btn-magic" style="flex:1;" id="optimizeCineBtn" onclick="optimizeCinePrompt()">
-                            <span class="spinner" id="cineSpinner"></span> <i class="fa-solid fa-microchip"></i> KI Prompt Generieren
+                        <button class="btn btn-magic" style="flex:1; min-width: 140px;" id="optimizeCineBtn" onclick="optimizeCinePrompt('t2v')">
+                            <span class="spinner" id="cineSpinner"></span> 🎬 Text-to-Video (T2V)
+                        </button>
+                        <button class="btn btn-primary" style="flex:1; min-width: 140px; background: linear-gradient(135deg, #10b981, #6366f1); border:none;" id="optimizeCineI2vBtn" onclick="optimizeCinePrompt('i2v')">
+                            <span class="spinner" id="cineI2vSpinner" style="display:none;"></span> 🖼️ Image-to-Video (I2V)
                         </button>
                     </div>
 
@@ -713,7 +728,7 @@
                         <label for="veoModeSelect" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
                             <i class="fa-solid fa-film" style="color: var(--primary);"></i> Prompt Modus
                         </label>
-                        <select id="veoModeSelect" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
+                        <select id="veoModeSelect" onchange="updateVeoModeHighlight()" style="width:100%; padding:8px; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; margin-top:4px;">
                             <option value="t2v" selected>🎬 Text-to-Video (Erstellt Bild & Bewegung von Grund auf)</option>
                             <option value="i2v">🖼️ Image-to-Video (Fokus auf Animation eines Startbilds)</option>
                         </select>
@@ -766,9 +781,12 @@
                         </button>
                     </div>
 
-                    <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button class="btn btn-primary" id="veoAiBtn" onclick="generateVeoPrompt('t2v')" style="flex:1;">
-                            <span class="spinner" id="veoSpinner"></span> 🎬 Text-to-Video
+                    <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+                        <button class="btn btn-primary" id="veoAiBtn" onclick="generateVeoPrompt('t2v')" style="flex:1; min-width:140px; background: linear-gradient(135deg, #6366f1, #4f46e5); font-weight:bold;">
+                            <span class="spinner" id="veoSpinner" style="display:none;"></span> 🎬 Text-to-Video Prompt
+                        </button>
+                        <button class="btn btn-primary" id="veoI2vBtn" onclick="generateVeoPrompt('i2v')" style="flex:1; min-width:140px; background: linear-gradient(135deg, #10b981, #059669); border:none; font-weight:bold;">
+                            <span class="spinner" id="veoI2vSpinner" style="display:none;"></span> 🖼️ Image-to-Video Prompt
                         </button>
                     </div>
 
@@ -1120,6 +1138,184 @@
                     <div style="display: flex; gap: 10px; justify-content: center;">
                         <button class="btn btn-primary" id="wm-process-btn" style="padding: 10px 20px; font-size: 1rem;" onclick="processWatermark()">✨ Wasserzeichen entfernen</button>
                         <a id="wm-download-btn" class="btn btn-secondary" style="padding: 10px 20px; font-size: 1rem; display: none; text-decoration: none;" download="cleaned_image.png"><i class="fa-solid fa-download"></i> Download</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- MODULE: AUTOBOT VIDEO STORYBOARD ENGINE (20s - 2 MIN)                     -->
+        <!-- ========================================================================= -->
+        <section id="autobot" class="tab-content">
+            <div class="header">
+                <div>
+                    <h1>🎬 Veo 3.1 Storyboard AutoBot <span style="font-size:0.5em; background:linear-gradient(135deg, var(--primary), var(--accent)); padding:3px 10px; border-radius:6px; vertical-align:middle; margin-left:10px; color:#fff; font-weight:bold;">20s bis 2 MINUTEN</span></h1>
+                    <p>Vollautomatisierte Erstellung konsistenter KI-Video-Storyboards für Google Flow & Veo 3.1 nach dem 8-Komponenten Standard.</p>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="col-2" style="display:flex; flex-direction:column; gap:20px;">
+                    <!-- Eingabe-Karte -->
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-clapperboard" style="color:var(--accent);"></i> Projekt & Regie-Briefing</div>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                            Gib deine Kurzfilm- oder Commercial-Idee ein. Der AutoBot zerlegt dein Konzept in atomare Shots mit 8-Komponenten Prompts, Kamera-Trajektorien, Audio/Lippensynchronisation und nahtlosen Übergängen.
+                        </p>
+
+                        <!-- Presets / Quick Chips -->
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
+                            <span style="font-size:0.75rem; color:var(--text-muted); align-self:center; font-weight:600;">Schnell-Beispiele:</span>
+                            <button class="style-btn" onclick="loadAutoBotPreset('cyberpunk')">🌃 Cyberpunk Tokio (20s)</button>
+                            <button class="style-btn" onclick="loadAutoBotPreset('perfume')">✨ Luxus-Werbespot (30s)</button>
+                            <button class="style-btn" onclick="loadAutoBotPreset('scifi')">🚀 Sci-Fi Entdeckung (60s)</button>
+                            <button class="style-btn" onclick="loadAutoBotPreset('shortfilm')">🎞️ Epi Kurzfilm (120s / 2 Min)</button>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label for="autobot_concept"><strong>Kurzfilm-Idee / Storyboard Konzept:</strong></label>
+                            <textarea id="autobot_concept" rows="4" placeholder="Z.B.: Eine Wissenschaftlerin entdeckt in einem verlassenen Untergrund-Labor ein mysteriöses blaues Lichtsignal und versucht den Ursprung zu entschlüsseln..." style="width:100%; border-radius:8px; padding:10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.9rem;"></textarea>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
+                            <div class="form-group">
+                                <label for="autobot_duration"><strong>Ziel-Videolänge:</strong></label>
+                                <select id="autobot_duration" style="width:100%;">
+                                    <option value="20">20 Sekunden (3 Shots - Action/Hook)</option>
+                                    <option value="30" selected>30 Sekunden (4 Shots - Teaser/Story)</option>
+                                    <option value="45">45 Sekunden (6 Shots - Narrative Commercial)</option>
+                                    <option value="60">60 Sekunden / 1 Min (8 Shots - Kurz-Doku)</option>
+                                    <option value="90">90 Sekunden (11 Shots - Multi-Scene)</option>
+                                    <option value="120">120 Sekunden / 2 Min (15 Shots - Epi Kurzfilm)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autobot_aspect"><strong>Seitenverhältnis (Aspect Ratio):</strong></label>
+                                <select id="autobot_aspect" style="width:100%;">
+                                    <option value="16:9" selected>16:9 Cinema / TV Landscape</option>
+                                    <option value="9:16">9:16 TikTok / Instagram Reels Vertical</option>
+                                    <option value="2.39:1">2.39:1 Anamorphic Widescreen</option>
+                                    <option value="1:1">1:1 Square</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autobot_pacing"><strong>Regie-Pacing Profil:</strong></label>
+                                <select id="autobot_pacing" style="width:100%;">
+                                    <option value="balanced" selected>🎬 Cinematic Balanced (Dynamischer Rhythmus 3s - 8s)</option>
+                                    <option value="fast">⚡ Fast & Punchy (Schnelle Hooks & Cuts 3s - 5s)</option>
+                                    <option value="atmospheric">🌌 Slow Atmospheric (Epi-Kamerafahrten 6s - 8s)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autobot_genre"><strong>Genre & Stil-Preset:</strong></label>
+                                <select id="autobot_genre" style="width:100%;">
+                                    <option value="Hollywood Storytelling" selected>Hollywood Storytelling (Dramatic Cinema)</option>
+                                    <option value="High-End Commercial">High-End Commercial / Werbespot</option>
+                                    <option value="TikTok / Reels Hook">TikTok / Reels High-Dynamic Hook</option>
+                                    <option value="Sci-Fi Cyberpunk">Sci-Fi Cyberpunk / Neon Noir</option>
+                                    <option value="Dark Thriller Noir">Dark Thriller / Film Noir</option>
+                                    <option value="Documentary Raw">Documentary Raw / Authentic</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autobot_model"><strong>KI Modell-Kette:</strong></label>
+                                <select id="autobot_model" style="width:100%;">
+                                    <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash ➔ 2.5 Flash Fallback (Empfohlen)</option>
+                                    <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                                    <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                                    <option value="lm-studio">LM Studio (Lokal)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label for="autobot_character"><strong>Hauptcharakter & Konsistenz-Tag (@Avatar):</strong> (Optional)</label>
+                            <input type="text" id="autobot_character" placeholder="Z.B.: @Elena_Vance, 34-jährige Ingenieurin mit dunklem Dutt und dunkelblauem Mantel" style="width:100%; border-radius:6px; padding:8px 12px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff;">
+                        </div>
+
+                        <button class="btn btn-primary" id="btnRunAutoBotStoryboard" onclick="runAutoBotStoryboard()" style="width:100%; justify-content:center; padding:12px; font-size:1rem; font-weight:bold; background:linear-gradient(135deg, var(--primary), var(--accent)); border:none;">
+                            🚀 Storyboard Generieren (Dynamisches Pacing 3s - 8s)
+                        </button>
+                    </div>
+
+                    <!-- AutoBot Live Console -->
+                    <div id="autoBotConsoleStoryboard" class="card" style="display:none; background: #090d16; border-color: var(--primary);">
+                        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><i class="fa-solid fa-terminal" style="color:var(--accent);"></i> AutoBot Terminal Stream</span>
+                            <span id="autoBotStatusStoryboard" style="font-size:0.75rem; font-weight:bold; color:var(--warning);">In Bearbeitung...</span>
+                        </div>
+                        <div id="autoBotLogStoryboard" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#a0aec0; max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-top:10px;"></div>
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte / Storyboard Ausgaben -->
+                <div class="col-2" style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card" id="storyboard-empty-state" style="text-align:center; padding:50px 20px;">
+                        <i class="fa-solid fa-film" style="font-size:3.5rem; color:var(--border-color); margin-bottom:15px;"></i>
+                        <h3 style="color:var(--text-main); margin-bottom:8px;">Noch kein Storyboard generiert</h3>
+                        <p style="font-size:0.85rem; color:var(--text-muted); max-width:450px; margin:0 auto;">
+                            Gib deine Idee ein und wähle die Spieldauer (20s bis 2 Minuten). Der AutoBot generiert dir ein fertiges Multi-Shot-Storyboard mit variablem Pacing (3s-8s) & Character Bible.
+                        </p>
+                    </div>
+
+                    <div id="storyboard-results-wrapper" style="display:none; display:flex; flex-direction:column; gap:20px;">
+                        <!-- Storyboard Summary & Actions Header -->
+                        <div class="card" style="border-color:var(--primary); background:rgba(15,23,42,0.8);">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                                <div>
+                                    <h2 id="sb-title" style="color:#fff; font-size:1.3rem; margin:0 0 4px 0;">Kurzfilm Titel</h2>
+                                    <p id="sb-narrative" style="font-size:0.85rem; color:var(--text-muted); margin:0;">Handlungskonzept...</p>
+                                </div>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                    <button class="btn btn-secondary" onclick="copyAllStoryboardPrompts()" style="font-size:0.75rem;"><i class="fa-regular fa-copy"></i> Alle Prompts Kopieren</button>
+                                    <button class="btn btn-secondary" onclick="copyStoryboardJson()" style="font-size:0.75rem;"><i class="fa-solid fa-code"></i> JSON Export</button>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:15px; flex-wrap:wrap; font-size:0.8rem; background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:6px; border:1px solid var(--border-color);">
+                                <div>⏱️ Gesamtdauer: <strong id="sb-meta-duration" style="color:var(--accent);">30s</strong></div>
+                                <div>🎬 Shots: <strong id="sb-meta-shots" style="color:var(--primary);">4 Shots</strong></div>
+                                <div>⚡ Pacing: <strong id="sb-meta-pacing" style="color:#38bdf8;">Balanced</strong></div>
+                                <div>📐 Aspect Ratio: <strong id="sb-meta-ratio">16:9</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- BigPicture Master Scene Multi-Panel Grid Card -->
+                        <div class="card" id="sb-master-scene-card" style="border-color:#f59e0b; background:rgba(245,158,11,0.08); display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-weight:bold; color:#f59e0b; font-size:0.95rem;">
+                                    🖼️ BigPicture Multi-Panel Storyboard Grid Prompt (Nano Banana / Midjourney Collage)
+                                </span>
+                                <button class="btn btn-secondary" onclick="copyMasterScenePrompt()" style="padding:2px 8px; font-size:0.7rem;">
+                                    <i class="fa-regular fa-copy"></i> Storyboard-Grid Prompt Kopieren
+                                </button>
+                            </div>
+                            <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 6px 0;">
+                                Generiere mit diesem Prompt ein <strong>4-Panel Contact Sheet / Storyboard-Grid Bild</strong> in Nano Banana oder Midjourney. Du erhältst alle Hauptszenen & den Charakter auf einen Blick in EINEM Gesamtbild für die perfekte Big-Picture Übersicht!
+                            </p>
+                            <p id="sb-master-scene-prompt" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#fef3c7; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; margin:0; white-space:pre-wrap; word-break:break-word; border:1px dashed #f59e0b;"></p>
+                        </div>
+
+                        <!-- Character Bible Drawer Card -->
+                        <div class="card" id="sb-char-bible-card" style="border-color:var(--accent); background:rgba(6,78,59,0.2); display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-weight:bold; color:var(--accent); font-size:0.9rem;">
+                                    👤 Google Flow Character Bible (Whitepaper Abs. 4.1)
+                                </span>
+                                <button class="btn btn-secondary" onclick="copyCharacterBibleJson()" style="padding:2px 8px; font-size:0.7rem;">
+                                    <i class="fa-regular fa-copy"></i> Character Bible JSON Kopieren
+                                </button>
+                            </div>
+                            <div id="sb-char-bible-content" style="font-size:0.8rem; color:#e2e8f0; font-family:'JetBrains Mono', monospace; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:6px;"></div>
+                        </div>
+
+                        <!-- Shots Grid Container -->
+                        <div id="sb-shots-container" style="display:flex; flex-direction:column; gap:15px;"></div>
                     </div>
                 </div>
             </div>

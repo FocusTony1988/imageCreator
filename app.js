@@ -861,33 +861,41 @@ Every value inside the JSON must be written in English.`;
         const model = document.getElementById('modelSelectMain').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
         
-        const systemPrompt = `Du bist ein Experte für das Optimieren von Bild-Prompts für Diffusionsmodelle (wie Stable Diffusion / Midjourney). Deine Aufgabe ist es, den bereitgestellten Prompt des Nutzers zu verbessern, ohne jedoch den Kern, die Komposition oder den Charakter der ursprünglichen Szene zu verändern.
+        const systemPrompt = `Du bist der KI-Hauptarchitekt für Bildgeneratoren (Midjourney, Stable Diffusion, Flux). Deine Aufgabe ist es, aus einer Benutzeridee einen exzellenten, hochpräzisen Positiv- und Negativ-Prompt zu erstellen.
 
-Halte dich strikt an folgende Regeln:
+INTELLIGENTE ADAPTIVE REGEL-ANALYSE (Kontext-Sensitivität):
 
-1. KEIN OVER-ENGINEERING (Kein Text-Rauschen): Erfinde keine unnötigen neuen Bildelemente, Kleidungsstücke oder Hintergrunddetails hinzu, die der Nutzer nicht genannt hat.
-2. STRUKTUR: Ordne den optimierten Prompt streng nach dem Prinzip: [Subjekt] -> [Aktion/Pose] -> [Umgebung/Hintergrund] -> [Kamera-Spezifikationen/Licht].
-3. SPRACHE: Übersetze die Szene komplett ins Englische, da Bild-KIs das präziser verarbeiten können.
-4. KEINE WIDERSPRÜCHLICHEN NEGATIVES: Halte den Negative Prompt sauber und fokussiert auf Qualität und Anatomie. Liste dort KEINE Kleidungsstücke oder Objekte auf, die einfach nur nicht im Bild sein sollen.
-5. FOKUS AUF REALISMUS: Nutze präzise Kamera-Begriffe statt schwammiger Wörter wie "photorealistic".
+1. WENN STIL = FOTOREALISMUS / CINEMATIC / DOKU / REALISTISCHE SZENE:
+   - Schalte zu 100% auf den "Physics-First" Modus!
+   - Kausalität & Spurenbildung: Beschreibe Einschlagstäler, Schneewälle, Ruß, Brechungen, Druckwellen und Alterungsspuren (z.B. "impact trench in snow", "charred debris field").
+   - Maßstab & Proportionen: Setze mathematisch exakte Größenverhältnisse und reale Kameraoptiken (z.B. 28mm wide angle, f/2.8).
+   - Thermodynamik & Elemente: Physikalisch korrekter Rauch, Hitzeverformung, komprimierter Schnee.
+   - Prompt-Hygiene: Vermeide CGI-Floskeln ("epic", "hyperrealistic"), nutze "documentary style", "photojournalism", "natural lighting", "realistic physics".
 
-Ausgabe-Format:
-Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgende Struktur haben:
+2. WENN STIL = KÜNSTLERISCH / ANIME / FANTASY / CARTOON / ILLUSTRATION / SURREALISMUS:
+   - Schalte auf den "Style-First & Aesthetic Harmony" Modus!
+   - Erhalte die künstlerische Freiheit und den spezifischen Zeichen-/Animationsstil (z.B. Studio Ghibli, 2D vector art, watercolor, cel shading, high fantasy).
+   - Erzwinge KEINEN realistischen Kameraschmutz, Poren oder Fotojournalismus-Keywords, die den Kunststil verfälschen würden!
+   - Optimiere stattdessen Komposition, Farbpaletten-Harmonie, Linienführung, dynamische Lichtstimmung und Stil-Konsistenz.
+
+3. WENN STIL = BEAUTY / FASHION / STUDIO PORTRAIT:
+   - Balanciere saubere Studio-Ästhetik (Subsurface Scattering, Catchlights, Rembrandt-Lighting) ohne übertriebene Schmutzspuren.
+
+Gib das Ergebnis IMMER im folgenden JSON-Format zurück (ohne Markdown Code Blocks):
 {
   "workflow_meta": {
-    "intent": "Brief description of the scene in English",
-    "style_category": "e.g., Cinematic, Cyberpunk, Photorealistic"
+    "intent": "Kurze Zusammenfassung der Idee",
+    "style_category": "Erkannte Kategorie (z.B. Physics-Based Photorealism ODER Stylized Anime / Fantasy Art)",
+    "physics_focus_points": ["Angewandte Regeln (z.B. Kausalität & Optik ODER Stil-Harmonie & Farbpalette)"]
   },
   "prompts": {
-    "positive_prompt": "Der optimierte englische Prompt gemäß Strukturregeln",
-    "negative_prompt": "Ein sauberer, effektiver Negative Prompt gemäß Negative-Regeln"
+    "positive_prompt": "Vollständiger Positiv-Prompt auf Englisch. Beginnt mit Stil/Medium, gefolgt von Subjekt, Aktion, Komposition, Licht und modellspezifischen Parametern.",
+    "negative_prompt": "Maßgeschneiderter Negativ-Prompt, der Qualitätsprobleme filtert, ohne den gewünschten Kunst- oder Fotostil zu verfälschen"
   },
   "generation_parameters": {
-    "aspect_ratio": "Extract or guess best ratio (e.g., 16:9)",
-    "suggested_width": 1024,
-    "suggested_height": 1024,
-    "cfg_scale": 7.0,
-    "steps": 30,
+    "aspect_ratio": "16:9",
+    "cfg_scale": 5.0,
+    "steps": 35,
     "sampler_name": "DPM++ 2M Karras"
   }
 }`;
@@ -1568,10 +1576,19 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
         }
     }
 
-    async function optimizeCinePrompt() {
-        const btn = document.getElementById('optimizeCineBtn');
-        const spinner = document.getElementById('cineSpinner');
-        btn.disabled = true; spinner.style.display = 'inline-block';
+    async function optimizeCinePrompt(mode = 't2v') {
+        const btnT2v = document.getElementById('optimizeCineBtn');
+        const btnI2v = document.getElementById('optimizeCineI2vBtn');
+        const spinnerT2v = document.getElementById('cineSpinner');
+        const spinnerI2v = document.getElementById('cineI2vSpinner');
+
+        if (mode === 'i2v') {
+            if (btnI2v) btnI2v.disabled = true;
+            if (spinnerI2v) spinnerI2v.style.display = 'inline-block';
+        } else {
+            if (btnT2v) btnT2v.disabled = true;
+            if (spinnerT2v) spinnerT2v.style.display = 'inline-block';
+        }
 
         const sceneInputVal = document.querySelector('[data-nano="cine.scene"]')?.value || nanoState.cine.scene || "";
         nanoState.cine.scene = sceneInputVal;
@@ -1585,40 +1602,61 @@ Gib das Ergebnis als valides JSON-Objekt zurück:
         const aspectRatioVal = document.querySelector('[data-nano="cine.ratio"]')?.value || nanoState.cine.ratio || "--ar 16:9";
         nanoState.cine.ratio = aspectRatioVal;
 
-        const rawContext = `Mode: ${ci.mode === 'edit' ? "EDIT EXISTING IMAGE" : "NEW GENERATION"}\nScene: ${sceneInputVal}\nCamera: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming: ${ci.moves.join(', ')}\nAspect Ratio Parameter: ${aspectRatioVal}${jsonContext}`;
+        const rawContext = `Generation Mode: ${mode.toUpperCase()} (${mode === 'i2v' ? 'Image-to-Video Animation for Uploaded Image' : 'Standalone Text-to-Video / Text-to-Image Generation'})\nScene Description (German/English): ${sceneInputVal}\nCamera Rig: ${ci.cam}, Lens: ${ci.lens}\nSettings: ${ci.focal}, ${ci.aperture}\nFraming/Moves: ${ci.moves.join(', ')}\nAspect Ratio Parameter: ${aspectRatioVal}${jsonContext}`;
         
         const useAutoBot = true; // Always use Auto Bot Streaming
         const model = document.getElementById('modelSelectCine').value;
         const lmUrl = document.getElementById('apiUrl').value.trim() || HARDCODED_URL;
 
-        const systemPrompt = `Du bist ein Experte für das Optimieren von Bild-Prompts für Diffusionsmodelle (wie Stable Diffusion / Midjourney). Deine Aufgabe ist es, den bereitgestellten Prompt des Nutzers zu verbessern, ohne jedoch den Kern, die Komposition oder den Charakter der ursprünglichen Szene zu verändern.
+        let systemPrompt = "";
+        if (mode === 'i2v') {
+            systemPrompt = `Du bist ein hochspezialisierter Image-to-Video (I2V) Prompt Architect für KIs wie Veo 3.1, Runway Gen-3, Luma Dream Machine und Kling AI.
+Deine Aufgabe ist es, für ein BEREITS VORLIEGENDES STARTBILD den perfekten Kamera- und Bewegungs-Prompt zu generieren.
 
-Halte dich strikt an folgende Regeln:
+STRIKTE IMAGE-TO-VIDEO REGELN:
+1. NIEMALS DAS AUSSEHEN DER ANWESENDEN PERSONEN ODER OBJEKTE BESCHREIBEN: Vermeide jegliche Farbbeschreibungen oder Aussehensdetails (das Hochgeladene Bild zeigt es bereits!).
+2. NUR KAMERA & BEWEGUNG BESCHREIBEN: Fokussiere dich zu 100% auf die Kamerabewegung (Camera movement), die Bewegung des Subjekts ab Sekunde 0 (Subject motion), Umwelt-Physik (Environment physics, lighting dynamics, particles) und Sound Design.
+3. PRÄZISE WEGMARKEN: Nutze professionelle Kamera-Begriffe (z.B. "Slow steady push-in", "Arc left", "Pan right matching subject pace").
 
-1. KEIN OVER-ENGINEERING (Kein Text-Rauschen): Erfinde keine unnötigen neuen Bildelemente, Kleidungsstücke oder Hintergrunddetails hinzu, die der Nutzer nicht genannt hat.
-2. STRUKTUR: Ordne den optimierten Prompt streng nach dem Prinzip: [Subjekt] -> [Aktion/Pose] -> [Umgebung/Hintergrund] -> [Kamera-Spezifikationen/Licht].
-3. SPRACHE: Übersetze die Szene komplett ins Englische, da Bild-KIs das präziser verarbeiten können.
-4. KEINE WIDERSPRÜCHLICHEN NEGATIVES: Halte den Negative Prompt sauber und fokussiert auf Qualität und Anatomie. Liste dort KEINE Kleidungsstücke oder Objekte auf, die einfach nur nicht im Bild sein sollen.
-5. FOKUS AUF REALISMUS: Nutze präzise Kamera-Begriffe statt schwammiger Wörter wie "photorealistic".
-6. ASPECT RATIO PFLICHT: Füge am Ende von 'final_prompt' ZWINGEND den Parameter '${aspectRatioVal}' (z.B. --ar 9:16, --ar 16:9, etc.) an!
-
-Ausgabe-Format:
-Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgende Struktur haben:
+Ausgabe-Format (AUSSCHLIESSLICH dieses JSON zurückgeben):
 {
   "cinema_workflow": {
-    "intent": "Short summary of the visual goal",
-    "rig_details": "Camera and lens configuration string, combining the camera model and lens choice with focal length and aperture",
-    "light_setup": "Lighting and atmospheric description in high cinematic detail (e.g. volumetric neon key light, Rembrandt fill, soft golden rim light)"
+    "intent": "Image-to-Video Motion Animation for Uploaded Reference Image",
+    "rig_details": "Camera setup: ${ci.cam} with ${ci.lens} (${ci.focal}, ${ci.aperture})",
+    "light_setup": "Volumetric light shift, environmental particles, and dynamic shadows"
   },
   "prompts": {
-    "technical_prompt": "Prompt focused on camera technicalities, film stock emulation, grain, color grading, and lens effects",
-    "scene_prompt": "Prompt focused on the character description, environment, mood, and weather",
-    "final_prompt": "Integrated cinematic prompt combining technical and scene aspects with exact aspect ratio parameter at the end (e.g. ${aspectRatioVal})"
+    "technical_prompt": "Camera movement trajectory: ${ci.moves.join(', ') || 'Slow push-in'}. Shutter speed and motion blur specs.",
+    "scene_prompt": "Subject motion: [Aktion]. Environment physics: [Partikel, Licht, Rauch]. Sound design: [Audio].",
+    "final_prompt": "Camera movement: ${ci.moves.join(', ') || 'Slow push-in'}. Subject motion: Action starts immediately. Environment physics: Dynamic lighting and particle drift. Sound design: Atmospheric audio."
   }
 }`;
+        } else {
+            systemPrompt = `Du bist ein Experte für das Optimieren von Text-to-Video / Text-to-Image Prompts für Diffusionsmodelle (wie Midjourney, Flux, Veo 3.1).
+Deine Aufgabe ist es, einen vollständigen, bildgewaltigen Prompt für eine Neu-Generierung zu erstellen.
+
+STRIKTE TEXT-TO-VIDEO REGELN:
+1. STRUKTUR: [Subjekt/Charakter] -> [Aktion/Pose] -> [Umgebung/Atmosphäre] -> [Kamera-Rig/Licht].
+2. ASPECT RATIO PFLICHT: Füge am Ende von 'final_prompt' ZWINGEND den Parameter '${aspectRatioVal}' an!
+
+Ausgabe-Format (AUSSCHLIESSLICH dieses JSON zurückgeben):
+{
+  "cinema_workflow": {
+    "intent": "Full Text-to-Video / Text-to-Image Standalone Generation",
+    "rig_details": "${ci.cam} with ${ci.lens} (${ci.focal}, ${ci.aperture})",
+    "light_setup": "Cinematic lighting setup with deep contrast and volumetric haze"
+  },
+  "prompts": {
+    "technical_prompt": "Camera framing: ${ci.moves.join(', ') || 'Static framing'}. Lens & film stock emulation specs.",
+    "scene_prompt": "Detailed subject description, clothes, expression, environment and weather.",
+    "final_prompt": "Cinematic shot of [Subject], [Action], [Environment], shot on ${ci.cam} with ${ci.lens} ${ci.focal} ${ci.aperture}, ${aspectRatioVal}"
+  }
+}`;
+        }
         
         function applyCineResult(res) {
             document.getElementById('out-cine-tech').innerHTML = `
+                <b>Mode:</b> ${mode.toUpperCase()} (${mode === 'i2v' ? 'Image-to-Video Motion' : 'Text-to-Video Full Gen'})<br>
                 <b>Intent:</b> ${res.cinema_workflow?.intent || ""}<br>
                 <b>Rig:</b> ${res.cinema_workflow?.rig_details || ""}<br>
                 <b>Lighting:</b> ${res.cinema_workflow?.light_setup || ""}
@@ -1648,12 +1686,15 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 
                 const res = extractJSON(jsonStr);
                 applyCineResult(res);
-                showToast("Cinema-KI JSON erfolgreich generiert!");
-                btn.disabled = false; spinner.style.display = 'none';
+                showToast(`Cinema-KI JSON (${mode.toUpperCase()}) erfolgreich generiert!`);
             } catch(e) { 
                 console.error(e.message);
                 showToast("Fehler: " + e.message, true); 
-                btn.disabled = false; spinner.style.display = 'none';
+            } finally {
+                if (btnT2v) btnT2v.disabled = false;
+                if (btnI2v) btnI2v.disabled = false;
+                if (spinnerT2v) spinnerT2v.style.display = 'none';
+                if (spinnerI2v) spinnerI2v.style.display = 'none';
             }
         } else {
             // Auto Bot Streaming
@@ -1714,7 +1755,7 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                                     
                                     const res = extractJSON(payload.content);
                                     applyCineResult(res);
-                                    showToast("Cinema Auto Bot JSON erfolgreich generiert!");
+                                    showToast(`Cinema Auto Bot JSON (${mode.toUpperCase()}) erfolgreich generiert!`);
                                 }
                             } catch (err) {
                                 console.error("Error parsing SSE JSON:", err);
@@ -1727,8 +1768,12 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
                 showToast("Fehler: " + e.message, true); 
                 statusSpan.innerText = 'Failed';
                 statusSpan.style.color = 'var(--danger)';
+            } finally {
+                if (btnT2v) btnT2v.disabled = false;
+                if (btnI2v) btnI2v.disabled = false;
+                if (spinnerT2v) spinnerT2v.style.display = 'none';
+                if (spinnerI2v) spinnerI2v.style.display = 'none';
             }
-            btn.disabled = false; spinner.style.display = 'none';
         }
     }
 
@@ -1912,6 +1957,32 @@ Du musst die Antwort als valides JSON-Objekt zurückgeben. Das JSON MUSS folgend
         btnElement.innerText = "✅ Erfolgreich eingefügt!";
         btnElement.style.background = "var(--success)";
         btnElement.disabled = true;
+    };
+
+    window.updateVeoModeHighlight = function() {
+        const mode = document.getElementById('veoModeSelect')?.value || 't2v';
+        const t2vBtn = document.getElementById('veoAiBtn');
+        const i2vBtn = document.getElementById('veoI2vBtn');
+
+        if (mode === 'i2v') {
+            if (i2vBtn) {
+                i2vBtn.style.transform = 'scale(1.05)';
+                i2vBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.6)';
+            }
+            if (t2vBtn) {
+                t2vBtn.style.transform = 'scale(1)';
+                t2vBtn.style.boxShadow = 'none';
+            }
+        } else {
+            if (t2vBtn) {
+                t2vBtn.style.transform = 'scale(1.05)';
+                t2vBtn.style.boxShadow = '0 0 15px rgba(99, 102, 241, 0.6)';
+            }
+            if (i2vBtn) {
+                i2vBtn.style.transform = 'scale(1)';
+                i2vBtn.style.boxShadow = 'none';
+            }
+        }
     };
 
     window.generateVeoPrompt = async function(forcedMode) {
@@ -2192,8 +2263,10 @@ REGELN:
                     uploadedCineJson = JSON.parse(e.target.result);
                     uploadedCineBase64 = null;
                     const btnRun = document.getElementById('btnRunCineVision');
+                    const btnI2vDirect = document.getElementById('btnRunCineI2vDirect');
                     const label = document.getElementById('cineUploadLabel');
                     if (btnRun) btnRun.style.display = 'inline-block';
+                    if (btnI2vDirect) btnI2vDirect.style.display = 'inline-block';
                     if (label) label.innerText = `JSON geladen: ${file.name}`;
                     showToast("JSON-Datei geladen! Gemini 3.5 Flash Lite bereit. 📄✨");
                 } catch (err) {
@@ -2209,14 +2282,16 @@ REGELN:
                 const imgEl = document.getElementById('cineVisionPreview');
                 const previewContainer = document.getElementById('cineVisionPreviewContainer');
                 const btnRun = document.getElementById('btnRunCineVision');
+                const btnI2vDirect = document.getElementById('btnRunCineI2vDirect');
                 const label = document.getElementById('cineUploadLabel');
 
                 if (imgEl) imgEl.src = uploadedCineBase64;
                 if (previewContainer) previewContainer.style.display = 'block';
                 if (btnRun) btnRun.style.display = 'inline-block';
+                if (btnI2vDirect) btnI2vDirect.style.display = 'inline-block';
                 if (label) label.innerText = `Bild geladen: ${file.name}`;
 
-                showToast("Referenzbild geladen! Gemini 3.5 Flash Lite Vision bereit. 👁️");
+                showToast("Referenzbild geladen! Image-to-Video & Vision bereit. 👁️🎬");
             };
             reader.readAsDataURL(file);
         } else {
@@ -2235,11 +2310,13 @@ REGELN:
         const input = document.getElementById('cineVisionInput');
         const previewContainer = document.getElementById('cineVisionPreviewContainer');
         const btnRun = document.getElementById('btnRunCineVision');
+        const btnI2vDirect = document.getElementById('btnRunCineI2vDirect');
         const label = document.getElementById('cineUploadLabel');
 
         if (input) input.value = '';
         if (previewContainer) previewContainer.style.display = 'none';
         if (btnRun) btnRun.style.display = 'none';
+        if (btnI2vDirect) btnI2vDirect.style.display = 'none';
         if (label) label.innerText = 'Bild / JSON hierhin ziehen oder wählen';
     };
 
@@ -2882,3 +2959,304 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof renderHistory === 'function') renderHistory();
     });
+
+    /* =========================================
+       AUTOBOT STORYBOARD ENGINE
+       ========================================= */
+    let lastGeneratedStoryboard = null;
+
+    window.loadAutoBotPreset = function(type) {
+        const conceptEl = document.getElementById('autobot_concept');
+        const durationEl = document.getElementById('autobot_duration');
+        const genreEl = document.getElementById('autobot_genre');
+        const aspectEl = document.getElementById('autobot_aspect');
+        const charEl = document.getElementById('autobot_character');
+
+        if (type === 'cyberpunk') {
+            if (conceptEl) conceptEl.value = "Eine Streetwear-Athletin rennt bei Nacht durch die regenfeuchten Straßen von Neontokio. Neonreklamen spiegeln sich in den Pfützen, während eine FPV-Drohne sie eng verfolgt.";
+            if (durationEl) durationEl.value = "20";
+            if (genreEl) genreEl.value = "Sci-Fi Cyberpunk";
+            if (aspectEl) aspectEl.value = "9:16";
+            if (charEl) charEl.value = "@Runner_Yuki, 26-jährige japanische Athletin mit neon-türkisem Zopf und reflektierender Jacke";
+        } else if (type === 'perfume') {
+            if (conceptEl) conceptEl.value = "Eine elegante Frau in einem weißen Seidenkleid greift an einem Marmortisch nach einem Flakon Parfüm in einer sonnendurchfluteten Pariser Dachwohnung.";
+            if (durationEl) durationEl.value = "30";
+            if (genreEl) genreEl.value = "High-End Commercial";
+            if (aspectEl) aspectEl.value = "16:9";
+            if (charEl) charEl.value = "@Sophia, 30-jährige Elegante Frau mit dunklem glatten Haar und seidener Kleidung";
+        } else if (type === 'scifi') {
+            if (conceptEl) conceptEl.value = "Ein Erkundungs-Ingenieur entdeckt in den Eishöhlen eines fremden Planeten ein uraltes leuchtendes Artefakt, das plötzlich Impulse aussendet.";
+            if (durationEl) durationEl.value = "60";
+            if (genreEl) genreEl.value = "Hollywood Storytelling";
+            if (aspectEl) aspectEl.value = "2.39:1";
+            if (charEl) charEl.value = "@Commander_Jax, 40-jähriger Astronaut im mattschwarzen Raumanzug mit beleuchtetem Visier";
+        } else if (type === 'shortfilm') {
+            if (conceptEl) conceptEl.value = "Ein geheimnisvoller Uhrmacher baut in einer historischen Werkstatt an einer Zeitmaschine. Als er das letzte Zahnrad einsetzt, zieht ein Lichtstrudel durch den Raum.";
+            if (durationEl) durationEl.value = "120";
+            if (genreEl) genreEl.value = "Hollywood Storytelling";
+            if (aspectEl) aspectEl.value = "16:9";
+            if (charEl) charEl.value = "@Master_Kael, 65-jähriger Uhrmacher mit silbernem Haar, Lupe und lederner Arbeitsschürze";
+        }
+        showToast("Preset geladen! Klicke auf 'Storyboard Generieren'. ✨");
+    };
+
+    window.runAutoBotStoryboard = async function() {
+        const concept = document.getElementById('autobot_concept')?.value.trim();
+        if (!concept) {
+            showToast("Bitte gib eine Idee oder ein Konzept ein!", true);
+            return;
+        }
+
+        const duration = document.getElementById('autobot_duration')?.value || "30";
+        const aspect_ratio = document.getElementById('autobot_aspect')?.value || "16:9";
+        const genre = document.getElementById('autobot_genre')?.value || "Hollywood Storytelling";
+        const pacing_style = document.getElementById('autobot_pacing')?.value || "balanced";
+        const character = document.getElementById('autobot_character')?.value.trim() || "";
+        const model = document.getElementById('autobot_model')?.value || "gemini-3.5-flash";
+        const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
+
+        const btn = document.getElementById('btnRunAutoBotStoryboard');
+        const consoleDiv = document.getElementById('autoBotConsoleStoryboard');
+        const logDiv = document.getElementById('autoBotLogStoryboard');
+        const statusSpan = document.getElementById('autoBotStatusStoryboard');
+
+        if (btn) btn.disabled = true;
+        if (consoleDiv) consoleDiv.style.display = 'block';
+        if (logDiv) logDiv.innerHTML = '';
+        if (statusSpan) {
+            statusSpan.innerText = 'Regie-Board läuft...';
+            statusSpan.style.color = 'var(--warning)';
+        }
+
+        showToast("AutoBot v2.0 startet Multi-Agent Storyboard Erstellung... 🎬⚡");
+
+        try {
+            const response = await fetch(BACKEND_API_URL + '/api/autobot/storyboard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    concept: concept,
+                    duration: duration,
+                    aspect_ratio: aspect_ratio,
+                    genre: genre,
+                    pacing_style: pacing_style,
+                    character: character,
+                    model: model,
+                    lm_url: lmUrl
+                })
+            });
+
+            if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.replace('data: ', '');
+                        try {
+                            const payload = JSON.parse(dataStr);
+                            if (payload.event === 'log') {
+                                const logEntry = document.createElement('div');
+                                logEntry.innerHTML = `<span style="color:#64748b;">[AutoBot]</span> ${payload.message}`;
+                                logDiv.appendChild(logEntry);
+                                logDiv.scrollTop = logDiv.scrollHeight;
+                            } else if (payload.event === 'final_storyboard') {
+                                statusSpan.innerText = 'Vollständig';
+                                statusSpan.style.color = 'var(--success)';
+                                lastGeneratedStoryboard = payload.data;
+                                renderStoryboardOutput(payload.data);
+                                showToast("Storyboard & Character Bible erfolgreich generiert! 🎬✨");
+                            } else if (payload.event === 'final_storyboard_raw') {
+                                statusSpan.innerText = 'Abgeschlossen (Raw)';
+                                statusSpan.style.color = 'var(--accent)';
+                                const parsed = extractJSON(payload.raw);
+                                lastGeneratedStoryboard = parsed;
+                                renderStoryboardOutput(parsed);
+                                showToast("Storyboard generiert!");
+                            } else if (payload.event === 'error') {
+                                statusSpan.innerText = 'Fehler';
+                                statusSpan.style.color = '#ef4444';
+                                showToast("Fehler: " + payload.message, true);
+                            }
+                        } catch (err) {
+                            console.error("SSE JSON parse error:", err);
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            if (statusSpan) {
+                statusSpan.innerText = 'Verbindungsfehler';
+                statusSpan.style.color = '#ef4444';
+            }
+            showToast("Verbindungsfehler: " + e.message, true);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    function renderStoryboardOutput(data) {
+        const emptyState = document.getElementById('storyboard-empty-state');
+        const resultsWrapper = document.getElementById('storyboard-results-wrapper');
+        const titleEl = document.getElementById('sb-title');
+        const narrativeEl = document.getElementById('sb-narrative');
+        const metaDuration = document.getElementById('sb-meta-duration');
+        const metaShots = document.getElementById('sb-meta-shots');
+        const metaPacing = document.getElementById('sb-meta-pacing');
+        const metaRatio = document.getElementById('sb-meta-ratio');
+        const masterSceneCard = document.getElementById('sb-master-scene-card');
+        const masterScenePromptEl = document.getElementById('sb-master-scene-prompt');
+        const charBibleCard = document.getElementById('sb-char-bible-card');
+        const charBibleContent = document.getElementById('sb-char-bible-content');
+        const shotsContainer = document.getElementById('sb-shots-container');
+
+        if (emptyState) emptyState.style.display = 'none';
+        if (resultsWrapper) resultsWrapper.style.display = 'flex';
+
+        const meta = data.storyboard_meta || {};
+        if (titleEl) titleEl.innerText = meta.title || "KI Kurzfilm Storyboard";
+        if (narrativeEl) narrativeEl.innerText = meta.core_narrative || "Multi-Shot Storyboard für Veo 3.1 & Google Flow";
+        if (metaDuration) metaDuration.innerText = `${meta.total_duration_seconds || 30}s`;
+        if (metaShots) metaShots.innerText = `${meta.total_shots || data.shots?.length || 4} Variable Shots`;
+        if (metaPacing) metaPacing.innerText = meta.pacing_profile || "Balanced";
+        if (metaRatio) metaRatio.innerText = meta.aspect_ratio || "16:9";
+
+        // Render BigPicture Master Scene T2I Prompt
+        if (meta.master_scene_t2i_prompt && masterSceneCard && masterScenePromptEl) {
+            masterSceneCard.style.display = 'block';
+            masterScenePromptEl.innerText = meta.master_scene_t2i_prompt;
+        } else if (masterSceneCard) {
+            masterSceneCard.style.display = 'none';
+        }
+
+        // Render Character Bible Drawer
+        if (data.character_bible && charBibleCard && charBibleContent) {
+            charBibleCard.style.display = 'block';
+            charBibleContent.innerText = JSON.stringify(data.character_bible, null, 2);
+        } else if (charBibleCard) {
+            charBibleCard.style.display = 'none';
+        }
+
+        if (shotsContainer) {
+            shotsContainer.innerHTML = '';
+            const shots = data.shots || [];
+
+            shots.forEach((shot, index) => {
+                const shotCard = document.createElement('div');
+                shotCard.className = 'card';
+                shotCard.style.borderLeft = '4px solid var(--primary)';
+                shotCard.style.position = 'relative';
+
+                const keyframePrompt = shot.keyframe_image_prompt || shot.veo_8_part_prompt || shot.prompt || "";
+                const i2vPrompt = shot.i2v_motion_prompt || shot.veo_8_part_prompt || "";
+                const fallbackPrompt = shot.veo_8_part_prompt || "";
+
+                shotCard.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
+                        <span style="font-weight:bold; color:var(--accent); font-size:1rem;">
+                            🎬 Shot ${shot.shot_number || index + 1} (${shot.duration_seconds || 8}s)
+                        </span>
+                        <span style="background:rgba(79,70,229,0.2); color:var(--primary); padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">
+                            ${shot.framing || 'Medium Shot'}
+                        </span>
+                    </div>
+
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px; display:flex; gap:12px; flex-wrap:wrap;">
+                        <div><strong>Kamera:</strong> ${shot.camera_motion || 'Static'}</div>
+                        <div><strong>In/Out:</strong> ${shot.transition_in || 'Standard'} ➔ ${shot.transition_out || 'Cut'}</div>
+                    </div>
+
+                    <!-- STEP 1: KEYFRAME PROMPT -->
+                    <div style="background:var(--bg-input); padding:10px; border-radius:6px; border:1px solid var(--primary); margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:0.75rem; color:var(--primary); font-weight:bold;">🖼️ SCHRITT 1: TEXT-TO-IMAGE KEYFRAME PROMPT (Nano Banana / Midjourney)</span>
+                            <button class="btn btn-secondary" onclick="copyShotSubPrompt('keyframe-${index}')" style="padding:2px 8px; font-size:0.7rem;">
+                                <i class="fa-regular fa-copy"></i> Keyframe Kopieren
+                            </button>
+                        </div>
+                        <p id="keyframe-${index}" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#e2e8f0; margin:0; white-space:pre-wrap; word-break:break-word;">${keyframePrompt}</p>
+                    </div>
+
+                    <!-- STEP 2: IMAGE-TO-VIDEO ANIMATION PROMPT -->
+                    <div style="background:var(--bg-input); padding:10px; border-radius:6px; border:1px solid var(--accent); margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-size:0.75rem; color:var(--accent); font-weight:bold;">📽️ SCHRITT 2: IMAGE-TO-VIDEO ANIMATION PROMPT (Veo 3.1 / Runway / Luma)</span>
+                            <button class="btn btn-secondary" onclick="copyShotSubPrompt('i2v-${index}')" style="padding:2px 8px; font-size:0.7rem;">
+                                <i class="fa-regular fa-copy"></i> Motion-Prompt Kopieren
+                            </button>
+                        </div>
+                        <p id="i2v-${index}" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#e2e8f0; margin:0; white-space:pre-wrap; word-break:break-word;">${i2vPrompt}</p>
+                    </div>
+
+                    ${shot.audio_cues ? `
+                    <div style="font-size:0.78rem; color:var(--text-muted); background:rgba(0,0,0,0.15); padding:6px 10px; border-radius:4px;">
+                        🔊 <strong>Audio & Lipsync:</strong> ${shot.audio_cues}
+                    </div>` : ''}
+                `;
+                shotsContainer.appendChild(shotCard);
+            });
+        }
+    }
+
+    window.copyMasterScenePrompt = function() {
+        const el = document.getElementById('sb-master-scene-prompt');
+        if (!el || !el.innerText) return;
+        navigator.clipboard.writeText(el.innerText).then(() => {
+            showToast("🖼️ BigPicture Master-Scene Prompt kopiert! 📋✨");
+        }).catch(err => {
+            showToast("Fehler beim Kopieren", true);
+        });
+    };
+
+    window.copyCharacterBibleJson = function() {
+        const el = document.getElementById('sb-char-bible-content');
+        if (!el || !el.innerText) return;
+        navigator.clipboard.writeText(el.innerText).then(() => {
+            showToast("👤 Character Bible JSON kopiert! 📋✨");
+        }).catch(err => {
+            showToast("Fehler beim Kopieren", true);
+        });
+    };
+
+    window.copyShotSubPrompt = function(elementId) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        navigator.clipboard.writeText(el.innerText).then(() => {
+            showToast("Prompt in die Zwischenablage kopiert! 📋✨");
+        }).catch(err => {
+            showToast("Fehler beim Kopieren", true);
+        });
+    };
+
+    window.copyAllStoryboardPrompts = function() {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots) {
+            showToast("Kein Storyboard vorhanden!", true);
+            return;
+        }
+        const text = lastGeneratedStoryboard.shots.map((s, idx) => `--- SHOT ${idx + 1} (${s.duration_seconds || 8}s) ---\n${s.veo_8_part_prompt || s.prompt}`).join("\n\n");
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("Alle Shots in die Zwischenablage kopiert! 📋✨");
+        });
+    };
+
+    window.copyStoryboardJson = function() {
+        if (!lastGeneratedStoryboard) {
+            showToast("Kein Storyboard vorhanden!", true);
+            return;
+        }
+        const jsonStr = JSON.stringify(lastGeneratedStoryboard, null, 2);
+        navigator.clipboard.writeText(jsonStr).then(() => {
+            showToast("Vollständiges Storyboard JSON kopiert! 💾");
+        });
+    };

@@ -68,68 +68,61 @@ def map_model_name(model_name):
     return model_name
 
 def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1"):
-    """Core generator that calls either Gemini or LM Studio and handles rate limits."""
+    """Core generator that calls Gemini with automatic fallback (3.5 Flash -> 2.5 Flash -> LM Studio)."""
     import time
     import re
     
-    # Map model name to actual Gemini ID
-    model = map_model_name(model)
+    # Model fallback chain
+    model_chain = []
+    mapped = map_model_name(model)
     
-    # Determine the API client and target model
-    if model == 'lm-studio':
-        client = OpenAI(api_key="lm-studio", base_url=lm_studio_base)
-        target_model = get_lm_studio_model(lm_studio_base)
-        is_gemini = False
+    if mapped == 'lm-studio':
+        model_chain = ['lm-studio']
+    elif mapped == 'gemini-3.5-flash-lite':
+        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'lm-studio']
+    elif mapped == 'gemini-3.5-flash':
+        model_chain = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'lm-studio']
+    elif mapped == 'gemini-3.6-flash':
+        model_chain = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'lm-studio']
     else:
-        client = gemini_client
-        target_model = model
-        is_gemini = True
-        
-    max_retries = 6
-    base_delay = 5
-    
-    for attempt in range(max_retries):
-        try:
-            res = client.chat.completions.create(
-                model=target_model,
-                messages=messages,
-                temperature=temperature
-            )
-            yield ('result', res.choices[0].message.content)
-            return
-        except Exception as e:
-            err_msg = str(e)
-            # Only apply rate-limit retries for Gemini API (LM Studio has no quota limits)
-            if is_gemini and ("429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "quota" in err_msg.lower()):
-                delay = None
-                
-                # Pattern 1: Standard Gemini/OpenAI message: "Please retry in 40.9s"
-                match1 = re.search(r"retry(?:ing)?\s+(?:in|after)\s+(\d+\.?\d*)\s*s", err_msg, re.IGNORECASE)
-                if match1:
-                    delay = int(float(match1.group(1))) + 1
-                    
-                # Pattern 2: Google RPC details: "retryDelay': '40s'"
-                if not delay:
-                    match2 = re.search(r"retryDelay[\'\"]?:\s*[\'\"]?(\d+)\s*s", err_msg, re.IGNORECASE)
-                    if match2:
-                        delay = int(match2.group(1)) + 1
-                        
-                # Pattern 3: Generic "retry after X seconds"
-                if not delay:
-                    match3 = re.search(r"retry.*\s+(\d+\.?\d*)\s*(?:seconds|sec|s)", err_msg, re.IGNORECASE)
-                    if match3:
-                        delay = int(float(match3.group(1))) + 1
-                
-                # Fallback to exponential backoff if no regex matched
-                if not delay:
-                    delay = base_delay * (2 ** attempt)
-                    
-                yield ('log', f"⚠️ Gemini API Rate-Limit (429). Warte {delay}s... (Versuch {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-            else:
-                yield ('error', f"API-Fehler ({model} -> {target_model}): {e}")
+        model_chain = [mapped, 'gemini-3.5-flash', 'gemini-2.5-flash', 'lm-studio']
+
+    last_err = None
+
+    for target_model_name in model_chain:
+        if target_model_name == 'lm-studio':
+            client = OpenAI(api_key="lm-studio", base_url=lm_studio_base)
+            target_model = get_lm_studio_model(lm_studio_base)
+            is_gemini = False
+        else:
+            client = gemini_client
+            target_model = target_model_name
+            is_gemini = True
+
+        max_retries = 3 if is_gemini else 1
+        base_delay = 3
+
+        for attempt in range(max_retries):
+            try:
+                res = client.chat.completions.create(
+                    model=target_model,
+                    messages=messages,
+                    temperature=temperature
+                )
+                yield ('result', res.choices[0].message.content)
                 return
-    yield ('error', "Maximale Anzahl an API-Versuchen überschritten.")
+            except Exception as e:
+                last_err = str(e)
+                if is_gemini and ("429" in last_err or "RESOURCE_EXHAUSTED" in last_err or "quota" in last_err.lower()):
+                    delay = base_delay * (attempt + 1)
+                    yield ('log', f"⚠️ Modell {target_model} Rate-Limit (429). Warte {delay}s... (Versuch {attempt+1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    break # Switch to fallback model in model_chain
+        
+        yield ('log', f"🔄 Wechsele auf Fallback-Modell wegen Fehler in {target_model_name}...")
+
+    yield ('error', f"Alle Modelle in der Fallback-Kette fehlgeschlagen. Letzter Fehler: {last_err}")
 
 def get_ai_response(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1"):
     """Blocking helper function to make API calls with automatic retry."""
@@ -144,9 +137,16 @@ def get_ai_response(messages, model, temperature=0.7, lm_studio_base="http://127
 # --- FRONTEND ROUTES ---
 
 @app.route('/')
-def index():
-    """Serves the HTML user interface."""
+def serve_index():
     return send_file('index.html')
+
+@app.route('/download-manual')
+@app.route('/Nano_Banana_Ultimate_Kamera_und_Prompt_Handbuch.pdf')
+def download_manual():
+    pdf_path = os.path.join(app.root_path, 'Nano_Banana_Ultimate_Kamera_und_Prompt_Handbuch.pdf')
+    if os.path.exists(pdf_path):
+        return send_file(pdf_path, as_attachment=True, download_name='Nano_Banana_Ultimate_Kamera_und_Prompt_Handbuch.pdf')
+    return jsonify({"error": "Handbuch PDF nicht gefunden"}), 404
 
 @app.route('/api/optimize', methods=['POST'])
 def optimize_goal():
@@ -165,6 +165,221 @@ def optimize_goal():
     
     optimized = get_ai_response(messages, model=model, temperature=0.5, lm_studio_base=lm_url)
     return jsonify({"optimized_goal": optimized if optimized else ""})
+
+@app.route('/api/autobot/storyboard', methods=['POST'])
+@app.route('/api/autobot/storyboard', methods=['POST'])
+def generate_autobot_storyboard():
+    data = request.json
+    concept = data.get('concept', '')
+    duration = int(data.get('duration', 30))
+    aspect_ratio = data.get('aspect_ratio', '16:9')
+    genre = data.get('genre', 'Hollywood Drama')
+    pacing_style = data.get('pacing_style', 'balanced')
+    character_info = data.get('character', '')
+    model = data.get('model', 'gemini-3.5-flash')
+    lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+
+    if not concept:
+        return jsonify({"error": "Bitte gib ein Konzept oder eine Video-Idee ein."}), 400
+
+    def event_stream():
+        # Helper to call AI and yield logs during retries
+        def call_ai(messages, temperature=0.7):
+            for event_type, val in get_ai_response_stream(messages, model, temperature, lm_studio_base=lm_url):
+                if event_type == 'log':
+                    yield ('log', f"data: {json.dumps({'event': 'log', 'message': val})}\n\n")
+                elif event_type == 'result':
+                    yield ('result', val)
+                elif event_type == 'error':
+                    yield ('log', f"data: {json.dumps({'event': 'log', 'message': f'🔴 {val}'})}\n\n")
+
+        # ---------------------------------------------------------
+        # STAGE 1: INGESTION & PACING ANALYSIS
+        # ---------------------------------------------------------
+        yield f"data: {json.dumps({'event': 'log', 'message': '🚀 AutoBot Multi-Agent Board gestartet: Ingestion & Pacing...'})}\n\n"
+        
+        if pacing_style == 'fast':
+            pacing_desc = "Fast & Punchy (Schnelle Schnitte 3s-5s für maximale Dynamik / Reels / Commercials)"
+            target_avg_shot = 4
+        elif pacing_style == 'atmospheric':
+            pacing_desc = "Slow Atmospheric (Ruhige, getragene Kamerafahrten 7s-8s / Doku / Drama)"
+            target_avg_shot = 8
+        else:
+            pacing_desc = "Cinematic Balanced (Dynamischer Rhythmus-Wechsel zwischen 4s, 6s & 8s)"
+            target_avg_shot = 6
+
+        estimated_shots = max(2, round(duration / target_avg_shot))
+        yield f"data: {json.dumps({'event': 'log', 'message': f'🎬 Ziel-Dauer: {duration}s -> Pacing: {pacing_desc} (~{estimated_shots} Shots)'})}\n\n"
+
+        # ---------------------------------------------------------
+        # STAGE 2: 4 SPECIALIZED EXPERT AGENTS ASSEMBLY
+        # ---------------------------------------------------------
+        experts = [
+            "Executive Director (Dramaturgie & Pacing)",
+            "Lighting Director (Chiaroscuro & SSS Physik)",
+            "Camera Operator (Optik, Brennweite & Trajektorien)",
+            "Visual Artist (Charakter-Konsistenz & Keyframe Texturen)"
+        ]
+        experts_str = ", ".join(experts)
+        yield f"data: {json.dumps({'event': 'log', 'message': f'🧠 4-Agenten-Gremium einberufen: {experts_str}'})}\n\n"
+
+        if PACING_DELAY > 0:
+            time.sleep(1)
+
+        # ---------------------------------------------------------
+        # STAGE 3: LEAD ARCHITECT INITIAL DRAFT
+        # ---------------------------------------------------------
+        yield f"data: {json.dumps({'event': 'log', 'message': '📝 Lead Executive Producer entwirft das initiale Storyboard-Konzept...'})}\n\n"
+        
+        draft_prompt = f"""Erstelle ein erstes Storyboard-Konzept für ein KI-Video mit {duration}s Länge.
+Konzept: {concept}
+Genre: {genre}
+Seitenverhältnis: {aspect_ratio}
+Charakter-Info: {character_info}
+Pacing: {pacing_desc}
+
+Strukturiere das Konzept vorab in {estimated_shots} Shots mit Idee, Kameraführung, Charakterdarstellung und Übergängen."""
+
+        draft_res = None
+        for ev_type, ev_val in call_ai([{"role": "system", "content": "Du bist ein erfahrener KI-Regisseur."}, {"role": "user", "content": draft_prompt}], temperature=0.6):
+            if ev_type == 'log':
+                yield ev_val
+            elif ev_type == 'result':
+                draft_res = ev_val
+
+        if not draft_res:
+            draft_res = f"Initiales Konzept für {concept}"
+
+        yield f"data: {json.dumps({'event': 'log', 'message': '✅ Erster Regie-Entwurf erstellt. Übergeben an das Experten-Board...'})}\n\n"
+
+        # ---------------------------------------------------------
+        # STAGE 4: 4-AGENT REVIEW BOARD DEBATE & CRITIQUE
+        # ---------------------------------------------------------
+        reviews = []
+        for i, role in enumerate(experts):
+            if PACING_DELAY > 0:
+                time.sleep(PACING_DELAY)
+                
+            yield f"data: {json.dumps({'event': 'log', 'message': f'🕵️ Experte {i+1}/4 ({role}) prüft Entwurf auf Perfektion...'})}\n\n"
+            
+            rev_sys = f"Du bist der {role} in einem High-End Filmproduktions-Board."
+            rev_user = f"""Prüfe folgenden Entwurf für ein {duration}s KI-Video ({genre}):
+{draft_res}
+
+Finde aus der Sicht deiner Fachrolle ({role}) die 2-3 wichtigsten Optimierungspunkte bezüglich:
+1. Ist die Optik/Kamera/Brennweite (bzw. Beleuchtung oder Konsistenz) perfekt auf Veo 3.1 & Nano Banana abgestimmt?
+2. Ist das Pacing (Shot-Längen 3s-8s) dynamisch genug?
+Liefere kurze, präzise Anweisungen in Stichpunkten."""
+
+            rev_text = None
+            for ev_type, ev_val in call_ai([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], temperature=0.5):
+                if ev_type == 'log':
+                    yield ev_val
+                elif ev_type == 'result':
+                    rev_text = ev_val
+            
+            if rev_text:
+                reviews.append(f"### Gutachten von {role}:\n{rev_text}")
+                yield f"data: {json.dumps({'event': 'log', 'message': f'   💬 Feedback von {role} erhalten.'})}\n\n"
+
+        reviews_str = "\n\n".join(reviews)
+
+        # ---------------------------------------------------------
+        # STAGE 5: MASTER SYNTHESIS (FINAL 8-PART JSON STORYBOARD)
+        # ---------------------------------------------------------
+        if PACING_DELAY > 0:
+            time.sleep(PACING_DELAY)
+
+        yield f"data: {json.dumps({'event': 'log', 'message': '🏗️ Prompt Architect fusioniert das Feedback aller 4 Agenten in das finale Storyboard JSON...'})}\n\n"
+
+        final_system_prompt = f"""Du bist der weltweit führende AI Video Executive Director & Prompt Architect für Google Flow & Veo 3.1.
+Deine Aufgabe ist es, aus dem Erstentwurf und dem kritischen Feedback des 4-Agenten-Gremiums ein PERFEKTES, bezugfertiges Video-Storyboard JSON für einen KI-Kurzfilm ({duration}s) zu synthetisieren.
+
+FEEDBACK DER 4 EXPERTEN:
+{reviews_str}
+
+WICHTIGE PACING & REGIE-VORGABEN (Whitepaper Abs. 5.1 & 6.1):
+1. **DYNAMISCHE SHOT-LÄNGEN**: Verteile die Längen der Shots variabel (3s, 4s, 5s, 6s, 7s, 8s), sodass die Gesamtsumme EXAKT {duration} Sekunden ergibt!
+2. **DUAL PIPELINE (T2I Keyframe + I2V Motion)**:
+   - keyframe_image_prompt: Vollständiger Text-to-Image Prompt für Midjourney / Nano Banana (Kamera, Linse, Subsurface Scattering, Beleuchtung, Farbabgleich).
+   - i2v_motion_prompt: Image-to-Video Animation Prompt für Veo 3.1 / Runway / Luma (NUR Camera Movement, Subject Motion, Environment Physics, Audio/Lipsync).
+3. **8-KOMPONENTEN HIERARCHIE**: [Cinematography], [Subject], [Action], [Environment], [Lighting & Style], [Audio], [Temporal], [Technical].
+4. **FORMAT**: {aspect_ratio} | **GENRE**: {genre}.
+
+Ausgabe-Format:
+Du MUSST deine Antwort AUSSCHLIESSLICH als valides JSON-Objekt zurückgeben (ohne Markdown-Backticks, ohne Freitext davor/danach):
+{{
+  "storyboard_meta": {{
+    "title": "Titel des Kurzfilms",
+    "genre": "{genre}",
+    "pacing_profile": "{pacing_style}",
+    "total_duration_seconds": {duration},
+    "total_shots": {estimated_shots},
+    "aspect_ratio": "{aspect_ratio}",
+    "core_narrative": "Kurze Zusammenfassung der Handlung",
+    "master_scene_t2i_prompt": "Multi-Panel Film Storyboard Collage Prompt (Text-to-Image für Nano Banana / Midjourney): A professional cinematic film storyboard grid compilation, split screen contact sheet featuring 4 distinct sequential film frames from the story concept. Frame 1 (top left): wide establishing shot of environment. Frame 2 (top right): medium shot introducing @Hero_Name. Frame 3 (bottom left): dramatic action climax shot. Frame 4 (bottom right): cinematic close-up reaction with volumetric lighting. High resolution film contact sheet, fine 35mm grain, color graded cinematic palette, 8k raw concept art --ar {aspect_ratio.replace(':', '-') if ':' in aspect_ratio else '16-9'}"
+  }},
+  "character_bible": {{
+    "avatar_tag": "@Hero_Name",
+    "character_id": "CHAR_001",
+    "name": "Elena Vance",
+    "demographics": "34-year-old female engineer",
+    "physical_appearance": "athletic build, dark raven hair tied in a tight low bun, sharp emerald green eyes",
+    "wardrobe": "dark navy tactical jacket over matte black turtleneck",
+    "master_prompt_string": "Elena Vance, a 34-year-old female engineer, athletic build, dark raven hair in a tight low bun, sharp emerald green eyes, wearing dark navy tactical jacket"
+  }},
+  "shots": [
+    {{
+      "shot_number": 1,
+      "duration_seconds": 4,
+      "framing": "Wide Shot / 24mm Lens",
+      "camera_motion": "Fast push-in tracking shot",
+      "transition_type": "Whip Pan Right Match Cut",
+      "is_extend_shot": false,
+      "keyframe_image_prompt": "Text-to-Image Prompt für Midjourney / Nano Banana: Wide establishing shot, 24mm wide angle lens, @Hero_Name standing in futuristic laboratory, 35mm film grain, volumetric cyan lighting, highly detailed 8k raw photo --ar {aspect_ratio.replace(':', '-') if ':' in aspect_ratio else '16-9'}",
+      "i2v_motion_prompt": "Image-to-Video Animation Prompt für Veo 3.1 / Runway / Luma: Camera Movement: Fast steady camera push-in towards subject. Subject Motion: @Hero_Name turns head quickly towards camera. Environment Physics: Dust motes drifting in volumetric cyan light rays. Audio: Muffled rain ambient, footsteps echoing. 24fps, fluid motion.",
+      "veo_8_part_prompt": "Vollständiger kombinations Text-to-Video Fallback Prompt nach 8-Komponenten Hierarchie",
+      "audio_cues": "Dialogue: \"System initialized.\" / Heavy rain ambient",
+      "director_notes": "Kurzer, dynamischer Hook (4 Sekunden). Ausgewogene Bewegung ohne Jitter."
+    }}
+  ]
+}}
+"""
+
+        final_user_content = f"Konzept:\n{concept}\n\nBisheriger Entwurf:\n{draft_res}\n\nCharakter-Info:\n{character_info}"
+
+        yield f"data: {json.dumps({'event': 'log', 'message': '✨ Finalisiere Prompts, Transitions & Character Bible...'})}\n\n"
+
+        messages = [
+            {"role": "system", "content": final_system_prompt},
+            {"role": "user", "content": final_user_content}
+        ]
+
+        raw_res = None
+        for ev_type, ev_val in call_ai(messages, temperature=0.4):
+            if ev_type == 'log':
+                yield ev_val
+            elif ev_type == 'result':
+                raw_res = ev_val
+
+        if not raw_res:
+            yield f"data: {json.dumps({'event': 'error', 'message': 'Keine Antwort vom Modell erhalten.'})}\n\n"
+            return
+
+        try:
+            clean_json = raw_res.strip()
+            if "```json" in clean_json:
+                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_json:
+                clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+            parsed = json.loads(clean_json)
+            yield f"data: {json.dumps({'event': 'final_storyboard', 'data': parsed, 'message': '4-Agenten Storyboard erfolgreich beendet!'})}\n\n"
+        except Exception as e:
+            print(f"[Storyboard Error] JSON Parsing failed: {e}")
+            yield f"data: {json.dumps({'event': 'final_storyboard_raw', 'raw': raw_res, 'message': 'Raw Output empfangen.'})}\n\n"
+
+    return Response(event_stream(), mimetype='text/event-stream')
 
 @app.route('/api/copilot', methods=['POST'])
 def run_copilot():
@@ -264,22 +479,22 @@ def analyze_image():
     sys_prompt = (
         "Du bist ein optischer Vision-KI-Experte und Prompt-Engineer für Image-to-Video (I2V) Systeme (Veo 3.1, Runway Gen-3, Luma, Kling AI).\n"
         "DEINE AUFGABE:\n"
-        "Betrachte das übergebene Bild genau und analysiere es vollständig. Fülle die Formularfelder für die UI aus UND erstelle den perfekten englischen ANIMATION & CAMERA PROMPT, um genau dieses vorliegende Bild flüssig in Bewegung zu versetzen.\n\n"
+        "Betrachte das übergebene Bild genau und analysiere es vollständig. Fülle die Formularfelder für die UI auf DEUTSCH aus UND erstelle den perfekten englischen ANIMATION & CAMERA PROMPT, um genau dieses vorliegende Bild flüssig in Bewegung zu versetzen.\n\n"
         "I2V VISION-REGELN:\n"
         "1. KENNZEICHNE DAS HAUPTMOTIV: Identifiziere das Hauptmotiv im Bild (z.B. ein Fahrzeug, eine Person, eine Shampooflasche, ein Gebäude, ein Drache, ein Gericht).\n"
         "2. NIEMALS DAS AUSSEHEN NEU BESCHREIBEN: Beschreibe NICHT, welche Farbe, Kleidung oder Form das Motiv hat (das Bild zeigt es bereits!).\n"
         "3. FOKUS AUF BEWEGUNG & KAMERA: Beschreibe exakt, welche Kamerabewegung stattfindet und wie sich das Hauptmotiv und die Umwelt ab Sekunde 0 bewegen.\n"
         "4. PASSENDE PHYSIK & SOUND: Füge Partikel, Lichtwechsel, Motion Blur und ein authentisches Sound-Design hinzu.\n\n"
-        "FORMAT (Erstelle AUSSCHLIESSLICH dieses englische JSON):\n"
+        "FORMAT (Erstelle AUSSCHLIESSLICH dieses JSON):\n"
         "{\n"
         "  \"identified_subject\": \"Kurze deutsche Bezeichnung des erkannten Motivs im Bild (z.B. 'Historische Schiffsszene bei Sturm')\",\n"
         "  \"fields\": {\n"
-        "    \"subject\": \"Neutrales Hauptmotiv auf Englisch (z.B. 'The central couple / ship')\",\n"
-        "    \"action\": \"Dynamische Bewegung/Animation aus dem Bild auf Englisch\",\n"
-        "    \"fx\": \"Umwelt-Physik, Partikel & Gischt auf Englisch\",\n"
-        "    \"setting\": \"Beleuchtung & Atmosphäre aus dem Bild auf Englisch\",\n"
-        "    \"camera\": \"Kamerabewegung auf Englisch\",\n"
-        "    \"sound\": \"Authentisches Sound Design auf Englisch\"\n"
+        "    \"subject\": \"Hauptmotiv AUF DEUTSCH (z.B. 'Das Pärchen im Mittelpunkt / Das Piratenschiff')\",\n"
+        "    \"action\": \"Dynamische Bewegung/Animation aus dem Bild AUF DEUTSCH (z.B. 'Schaut langsam zur Kamera und lächelt')\",\n"
+        "    \"fx\": \"Umwelt-Physik, Partikel & Gischt AUF DEUTSCH (z.B. 'Aufspritzende Regentropfen und Funkenflug')\",\n"
+        "    \"setting\": \"Beleuchtung & Atmosphäre aus dem Bild AUF DEUTSCH (z.B. 'Dramatisches warmes Sonnenuntergangslicht mit Nebel')\",\n"
+        "    \"camera\": \"Kamerabewegung AUF DEUTSCH (z.B. 'Langsames Heranzoomend und sanfte Kreisbewegung')\",\n"
+        "    \"sound\": \"Authentisches Sound Design AUF DEUTSCH (z.B. 'Donnerrollen, Meeresrauschen und leiser Wind')\"\n"
         "  },\n"
         "  \"camera_movement\": \"Beschreibung der Kamerabewegung auf Englisch\",\n"
         "  \"subject_motion\": \"Beschreibung der Bewegung des neutralen Hauptmotivs auf Englisch\",\n"
@@ -340,7 +555,7 @@ def analyze_cine_image():
         "Du bist ein professioneller Director of Photography (DoP) und Vision-KI-Experte.\n"
         "DEINE AUFGABE:\n"
         "Analysiere das übergebene Bild (oder die Prompt-JSON) und schätze die exakten Kamera-, Linsen-, Licht- und Kompositions-Einstellungen ab. "
-        "Fülle auch die Motiv-Beschreibung (scene_description) vollständig auf Englisch aus.\n\n"
+        "Fülle auch die Motiv-Beschreibung (scene_description) vollständig AUF DEUTSCH aus, damit sie direkt in das Eingabefeld übernommen werden kann.\n\n"
         "VERFÜGBARE WERTE FÜR RIG:\n"
         "- camera: 'alexa35' (ARRI Alexa 35), 'red_vaptor' (RED V-Raptor), 'panavision' (Panavision DXL2), 'venice' (Sony Venice), 'imax' (IMAX 70mm), 'vhs' (VHS Analog)\n"
         "- lens: 'arri_sig' (ARRI Signature), 'cooke' (Cooke S4), 'canon_k35' (Canon K35), 'pana_c' (Anamorphic C-Series)\n"
@@ -349,7 +564,7 @@ def analyze_cine_image():
         "FORMAT (Erstelle AUSSCHLIESSLICH dieses JSON):\n"
         "{\n"
         "  \"identified_concept\": \"Kurzer deutscher Titel des erkannten Bildkonzepts\",\n"
-        "  \"scene_description\": \"Ausführliche englische Beschreibung des Motivs und der Stimmung auf dem Bild\",\n"
+        "  \"scene_description\": \"Ausführliche DEUTSCHE Beschreibung des Motivs, der Personen und der Szene für das Formular-Eingabefeld\",\n"
         "  \"rig\": {\n"
         "    \"camera\": \"alexa35|red_vaptor|panavision|venice|imax|vhs\",\n"
         "    \"lens\": \"arri_sig|cooke|canon_k35|pana_c\",\n"
