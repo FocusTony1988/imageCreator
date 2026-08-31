@@ -491,9 +491,10 @@
                     <h1>Cinematic Style & Edit</h1>
                     <p>Virtuelles Kamera-Rig und Video-Prompting.</p>
                 </div>
-                <div style="display: flex; gap: 5px; background: rgba(30, 38, 64, 0.4); padding: 5px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 5px; background: rgba(30, 38, 64, 0.4); padding: 5px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap;">
                     <button class="btn btn-secondary active-sub-tab" id="subTabCineBtn" onclick="switchCineSub('cine-rig')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: var(--primary);">🎥 Virtual Rig</button>
                     <button class="btn btn-secondary" id="subTabVeoBtn" onclick="switchCineSub('veo-studio')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: transparent;">🎬 Veo 3.1 Studio</button>
+                    <button class="btn btn-secondary" id="subTabVeoEditBtn" onclick="switchCineSub('veo-edit')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: transparent;">✂️ Video Bearbeiten (V2V)</button>
                     <button class="btn btn-secondary" id="subTabCamDirBtn" onclick="switchCineSub('camera-director')" style="margin: 0; padding: 6px 12px; font-size: 0.8rem; border: none; background: transparent;">🧭 AI Camera Director</button>
                 </div>
             </div>
@@ -820,6 +821,103 @@
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="veoAdvInput" placeholder="Deine Frage oder Idee..." onkeypress="if(event.key==='Enter') askVeoAdv()" style="margin:0;">
                         <button class="btn btn-primary" id="veoAdvBtn" onclick="askVeoAdv()" style="padding:0 20px; background:var(--success); border-color:var(--success);">Senden</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIDEO BEARBEITEN (V2V & EDITING PRESETS) CONTENT -->
+            <div id="veoEditContent" class="grid" style="display: none; align-items: stretch;">
+                <div class="card col-3">
+                    <div class="card-title">✂️ Video bearbeiten! (V2V & Gemini Editing Studio)</div>
+                    <div class="subtitle" style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-top:-8px; margin-bottom:20px;">
+                        Wende professionelle Video-zu-Video und Video-Editing Befehle an (Gemini 3.5, Veo 3.1, Runway, Sora)
+                    </div>
+
+                    <!-- Preset Selector Dropdown -->
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #fff; margin-bottom: 6px; display: block;">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Bearbeitungs-Kategorie wählen (10 Spezial-Prompts):
+                    </label>
+                    <select id="veoEditPresetSelect" onchange="applyVeoEditPreset()" style="width: 100%; padding: 10px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; font-weight: 600; font-size: 0.85rem; margin-bottom: 15px;">
+                        <option value="cam_angle" selected>1. 🎥 Camera angle change (Kamerawinkel ändern)</option>
+                        <option value="outfit">2. 👕 Outfit change (Outfit ändern)</option>
+                        <option value="obj_remove">3. 🗑️ Object removal (Objekt entfernen)</option>
+                        <option value="bg_replace">4. 🏙️ Background replacement (Hintergrund ersetzen)</option>
+                        <option value="obj_replace">5. 🔄 Object replacement (Objekt ersetzen)</option>
+                        <option value="style_transfer">6. 🎨 Style transfer (Stilübertragung)</option>
+                        <option value="product_ad">7. 📢 Product ad edit (Produktwerbung bearbeiten)</option>
+                        <option value="action_fx">8. ⚡ Action effects (Aktionseffekte)</option>
+                        <option value="face_protect">9. 👤 Face and identity protection (Gesicht & Identität schützen)</option>
+                        <option value="cine_upgrade">10. 🎬 Cinematic upgrade (Cinematischer Upgrade)</option>
+                    </select>
+
+                    <!-- Template Info Card -->
+                    <div id="veoEditInfoBox" style="padding: 14px; background: rgba(30, 41, 59, 0.5); border-left: 4px solid var(--primary); border-radius: 6px; margin-bottom: 18px;">
+                        <div id="veoEditTitle" style="font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 6px;"></div>
+                        <div id="veoEditDescDe" style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 10px; line-height: 1.4;"></div>
+                        
+                        <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Original Prompt Template:</div>
+                        <code id="veoEditTemplateEn" style="display: block; font-size: 0.75rem; color: #a5b4fc; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 4px; font-family: var(--font-code); white-space: pre-wrap; margin-bottom: 10px;"></code>
+                        
+                        <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Praxis-Beispiel:</div>
+                        <div id="veoEditExample" style="font-size: 0.78rem; color: #6ee7b7; font-style: italic; background: rgba(6, 78, 59, 0.2); padding: 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);"></div>
+                    </div>
+
+                    <!-- Dynamic Input Fields Container -->
+                    <div id="veoEditInputsContainer" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;"></div>
+
+                    <!-- Action Buttons -->
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="btnGenVeoEdit" onclick="generateVeoEditPrompt()" style="flex: 1; min-width: 160px; background: linear-gradient(135deg, #10b981, #3b82f6); border: none; padding: 12px; font-weight: 700;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ KI Editing Prompt Generieren
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadVeoEditExampleValues()" style="padding: 12px 16px;" title="Beispielwerte in Felder laden">
+                            <i class="fa-solid fa-lightbulb" style="color: var(--warning);"></i> Beispiel laden
+                        </button>
+                    </div>
+
+                    <!-- Output Area -->
+                    <div id="veoEditOutputContainer" style="display: none; margin-top: 20px; padding: 15px; background: rgba(15, 23, 42, 0.7); border-left: 4px solid #10b981; border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 700; font-size: 0.85rem; color: #fff;"><i class="fa-solid fa-video" style="color: #10b981;"></i> Finaler Video Editing Prompt (Englisch):</span>
+                            <button class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.72rem;" onclick="copyResult('veoEditFinalPromptEn', this)"><i class="fa-solid fa-copy"></i> COPY ENGLISCH</button>
+                        </div>
+                        <pre id="veoEditFinalPromptEn" style="font-family: var(--font-code); color: #6ee7b7; font-size: 0.88rem; line-height: 1.4; white-space: pre-wrap; background: #090d16; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid rgba(16, 185, 129, 0.2);"></pre>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-weight: 600; font-size: 0.78rem; color: #94a3b8;"><i class="fa-solid fa-language"></i> Deutsche Fassung (Erklärung):</span>
+                            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.68rem;" onclick="copyResult('veoEditFinalPromptDe', this)"><i class="fa-solid fa-copy"></i> COPY DEUTSCH</button>
+                        </div>
+                        <div id="veoEditFinalPromptDe" style="font-size: 0.8rem; color: #cbd5e1; line-height: 1.4; background: rgba(30, 41, 59, 0.4); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);"></div>
+                    </div>
+                </div>
+
+                <!-- KI Copilot & Mentor for Video Editing -->
+                <div class="card col-2" style="display: flex; flex-direction: column;">
+                    <div class="card-title" style="color: var(--success);"><i class="fa-solid fa-robot"></i> KI Regie Copilot (V2V)</div>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: -8px; margin-bottom: 12px; line-height: 1.4;">
+                        Beschreibe einfach deine Idee & Gemini wählt die passende Kategorie aus 10 Prompts und füllt alle Felder aus!
+                    </p>
+
+                    <!-- Chat Box -->
+                    <div id="veoEditChatBox" style="flex-grow: 1; min-height: 240px; max-height: 420px; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        <div style="padding: 10px 12px; border-radius: 8px; line-height: 1.4; max-width: 95%; background: var(--bg-input); border: 1px solid var(--border-color); align-self: flex-start; color: var(--text-main); font-size: 0.8rem;">
+                            Hallo Regisseur! 🎬✂️<br><br>
+                            Egal welche Änderung du im Video haben möchtest: Schreibe mir einfach deine Idee in das Textfeld unten. Ich wähle für dich aus den <strong>10 Spezial-Prompts</strong> die beste Kategorie und fülle alle Felder sofort automatisch aus!
+                        </div>
+                    </div>
+
+                    <!-- Input Box & Action Button -->
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <input type="text" id="veoEditAdvInput" placeholder="Z.B. Ändere das Outfit in eine Ritterrüstung..." onkeypress="if(event.key==='Enter') askVeoEditAdv()" style="margin: 0; padding: 10px; font-size: 0.85rem;">
+                        <button class="btn btn-primary" id="veoEditAdvBtn" onclick="askVeoEditAdv()" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700; padding: 10px;">
+                            <span class="spinner" id="veoEditAdvSpinner" style="display:none;"></span> 🤖 Idee analysieren & alle 10 Felder automatisch ausfüllen
+                        </button>
+                    </div>
+
+                    <!-- Guide Quick Tips -->
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(30, 41, 59, 0.4); border-radius: 6px; border-left: 3px solid #3b82f6; font-size: 0.75rem; color: #cbd5e1;">
+                        <strong style="color: #93c5fd; display: block; margin-bottom: 2px;">💡 Tipp für konsistente Gesichter</strong>
+                        Wenn du Gesicht oder Model schützen willst, wähle oder sage <em>"Gesichtsschutz"</em> – Gemini setzt dann automatisch <em>Face and Identity protection</em> ein.
                     </div>
                 </div>
             </div>

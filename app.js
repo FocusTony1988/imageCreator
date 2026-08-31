@@ -1894,17 +1894,21 @@ Ausgabe-Format (AUSSCHLIESSLICH dieses JSON zurückgeben):
     window.switchCineSub = function(tabId) {
         const rigBtn = document.getElementById('subTabCineBtn');
         const veoBtn = document.getElementById('subTabVeoBtn');
+        const veoEditBtn = document.getElementById('subTabVeoEditBtn');
         const camDirBtn = document.getElementById('subTabCamDirBtn');
         const rigContent = document.getElementById('cineRigContent');
         const veoContent = document.getElementById('veoStudioContent');
+        const veoEditContent = document.getElementById('veoEditContent');
         const camDirContent = document.getElementById('cameraDirectorContent');
         
         if(rigBtn) rigBtn.style.background = 'transparent';
         if(veoBtn) veoBtn.style.background = 'transparent';
+        if(veoEditBtn) veoEditBtn.style.background = 'transparent';
         if(camDirBtn) camDirBtn.style.background = 'transparent';
         
         if(rigContent) rigContent.style.display = 'none';
         if(veoContent) veoContent.style.display = 'none';
+        if(veoEditContent) veoEditContent.style.display = 'none';
         if(camDirContent) camDirContent.style.display = 'none';
 
         if (tabId === 'cine-rig') {
@@ -1913,6 +1917,10 @@ Ausgabe-Format (AUSSCHLIESSLICH dieses JSON zurückgeben):
         } else if (tabId === 'veo-studio') {
             if(veoBtn) veoBtn.style.background = 'var(--primary)';
             if(veoContent) veoContent.style.display = 'flex';
+        } else if (tabId === 'veo-edit') {
+            if(veoEditBtn) veoEditBtn.style.background = 'var(--primary)';
+            if(veoEditContent) veoEditContent.style.display = 'grid';
+            if(window.initVeoEditModule) window.initVeoEditModule();
         } else if (tabId === 'camera-director') {
             if(camDirBtn) camDirBtn.style.background = 'var(--primary)';
             if(camDirContent) camDirContent.style.display = 'grid';
@@ -2178,6 +2186,355 @@ REGELN:
     window.copyVeoToClipboard = function() {
         navigator.clipboard.writeText(document.getElementById('veoFinalPrompt').innerText);
         showToast("Veo 3.1 Prompt in die Zwischenablage kopiert! 📋");
+    };
+
+    /* =========================================
+       MODULE: VIDEO BEARBEITEN (V2V & EDITING PRESETS)
+       ========================================= */
+    const veoEditPresets = {
+        cam_angle: {
+            title: "1. 🎥 Camera angle change (Kamerawinkel ändern)",
+            descDe: "Erstelle diese Szene aus einem neuen Kamerawinkel neu. Behalte Hauptmotiv, Aktion und wichtige Details konsistent.",
+            templateEn: "Recreate this scene from a {cam_angle}. Keep {subject}, {action}, and {details} consistent. Adjust lighting, shadows, and background perspective to match the new angle.",
+            templateDe: "Erstelle diese Szene aus einem {cam_angle} neu. Behalte {subject}, {action} und {details} konsistent. Passe Beleuchtung, Schatten und Hintergrundperspektive an den neuen Winkel an.",
+            exampleEn: "Recreate this scene from a low-angle hero shot. Keep the speaker, action, and outfit consistent. Adjust the lighting, shadows, and background perspective to match the new angle.",
+            exampleDe: "Erstelle diese Szene aus einem Low-Angle-Hero-Shot neu. Behalte den Sprecher, die Aktion und die Kleidung konsistent. Passe Beleuchtung, Schatten und Hintergrundperspektive an den neuen Winkel an.",
+            fields: [
+                { id: "cam_angle", label: "Neuer Kamerawinkel / Perspektive", placeholder: "z.B. low-angle hero shot" },
+                { id: "subject", label: "Hauptmotiv (das unverändert bleibt)", placeholder: "z.B. the speaker" },
+                { id: "action", label: "Aktion / Bewegung", placeholder: "z.B. the action" },
+                { id: "details", label: "Wichtige Details (Outfit, Gesicht)", placeholder: "z.B. the outfit and face" }
+            ],
+            defaults: { cam_angle: "low-angle hero shot", subject: "the speaker", action: "the action", details: "the outfit and face" }
+        },
+        outfit: {
+            title: "2. 👕 Outfit change (Outfit ändern)",
+            descDe: "Ändere das Outfit der Person in einen neuen Stil, während Gesicht, Körperform und Bewegung exakt erhalten bleiben.",
+            templateEn: "Change {subject}'s outfit into {new_outfit}. Keep {keep_details} unchanged. Make the outfit move naturally with the body. Match the lighting and shadows of the original video.",
+            templateDe: "Ändere {subject}'s Outfit in {new_outfit}. Behalte {keep_details} unverändert. Lass das Outfit natürlich mit dem Körper mitbewegen. Passe Beleuchtung und Schatten an das Originalvideo an.",
+            exampleEn: "Change my outfit into a black luxury streetwear look. Keep my face, body shape, pose, and movement unchanged. Make the outfit move naturally with the body. Match the lighting and shadows of the original video.",
+            exampleDe: "Ändere mein Outfit in einen schwarzen Luxury-Streetwear-Look. Behalte mein Gesicht, meine Körperform, Pose und Bewegung unverändert. Lass das Outfit natürlich mit dem Körper mitbewegen. Passe Beleuchtung und Schatten an das Originalvideo an.",
+            fields: [
+                { id: "subject", label: "Person / Model", placeholder: "z.B. my, the person's" },
+                { id: "new_outfit", label: "Neuer Outfit-Stil", placeholder: "z.B. a black luxury streetwear look" },
+                { id: "keep_details", label: "Unveränderliche Details", placeholder: "z.B. face, body shape, pose, and movement" }
+            ],
+            defaults: { subject: "my", new_outfit: "a black luxury streetwear look", keep_details: "face, body shape, pose, and movement" }
+        },
+        obj_remove: {
+            title: "3. 🗑️ Object removal (Objekt entfernen)",
+            descDe: "Entferne ein ungewolltes Objekt aus dem Video und fülle den Raum natürlich mit dem umgebenden Hintergrund auf.",
+            templateEn: "Remove {obj_to_remove} from this video. Fill the space naturally using the surrounding {bg_context}. Keep {keep_details} unchanged. Make the edit clean and realistic.",
+            templateDe: "Entferne {obj_to_remove} aus diesem Video. Fülle den Raum natürlich mit dem umgebenden {bg_context}. Behalte {keep_details} unverändert. Mache den Schnitt sauber und realistisch.",
+            exampleEn: "Remove the water bottle from this video. Fill the space naturally using the surrounding table and background. Keep the person, lighting, and camera movement unchanged. Make the edit clean and realistic.",
+            exampleDe: "Entferne die Wasserflasche aus diesem Video. Fülle den Raum natürlich mit dem umgebenden Tisch und Hintergrund. Behalte die Person, Beleuchtung und Kamerabewegung unverändert. Mache den Schnitt sauber und realistisch.",
+            fields: [
+                { id: "obj_to_remove", label: "Zu entfernendes Objekt", placeholder: "z.B. the water bottle" },
+                { id: "bg_context", label: "Umgebender Hintergrund / Kontext", placeholder: "z.B. table and background" },
+                { id: "keep_details", label: "Unveränderliche Elemente", placeholder: "z.B. the person, lighting, and camera movement" }
+            ],
+            defaults: { obj_to_remove: "the water bottle", bg_context: "surrounding table and background", keep_details: "the person, lighting, and camera movement" }
+        },
+        bg_replace: {
+            title: "4. 🏙️ Background replacement (Hintergrund ersetzen)",
+            descDe: "Ersetze die Umgebung durch einen völlig neuen Ort, während Hauptmotiv, Beleuchtung und Winkel exakt angepasst werden.",
+            templateEn: "Replace the background with {new_location}. Keep {subject} exactly the same. Match the lighting, shadows, and camera angle so it looks real. Do not change {keep_details}.",
+            templateDe: "Ersetze den Hintergrund durch {new_location}. Behalte {subject} exakt gleich. Passe Beleuchtung, Schatten und Kamerawinkel so an, dass es real wirkt. Ändere nicht {keep_details}.",
+            exampleEn: "Replace the background with a modern podcast studio. Keep the speaker exactly the same. Match the lighting, shadows, and camera angle so it looks real. Do not change the face, clothing, voice, or lip movement.",
+            exampleDe: "Ersetze den Hintergrund durch ein modernes Podcast-Studio. Behalte den Sprecher exakt gleich. Passe Beleuchtung, Schatten und Kamerawinkel so an, dass es real wirkt. Ändere nicht Gesicht, Kleidung, Stimme oder Lippenbewegung.",
+            fields: [
+                { id: "new_location", label: "Neuer Ort / Hintergrund", placeholder: "z.B. a modern podcast studio" },
+                { id: "subject", label: "Hauptmotiv / Sprecher", placeholder: "z.B. the speaker" },
+                { id: "keep_details", label: "Geschützte Details", placeholder: "z.B. face, clothing, voice, or lip movement" }
+            ],
+            defaults: { new_location: "a modern podcast studio", subject: "the speaker", keep_details: "the face, clothing, voice, or lip movement" }
+        },
+        obj_replace: {
+            title: "5. 🔄 Object replacement (Objekt ersetzen)",
+            descDe: "Tausche ein bestimmtes Objekt im Video gegen ein neues aus, inklusive realistischer Schatten und Reflexionen.",
+            templateEn: "Replace {old_obj} with {new_obj}. Keep the same camera angle and lighting. Make {new_obj} match the scene with realistic shadows, reflections, and movement. Do not change {keep_details}.",
+            templateDe: "Ersetze {old_obj} durch {new_obj}. Behalte denselben Kamerawinkel und dieselbe Beleuchtung. Lass {new_obj} mit realistischen Schatten, Reflexionen und Bewegungen in die Szene passen. Ändere nicht {keep_details}.",
+            exampleEn: "Replace the plastic cup with a glowing glass cube. Keep the same camera angle and lighting. Make the cube match the scene with realistic shadows, reflections, and movement. Do not change the person or background.",
+            exampleDe: "Ersetze den Plastikbecher durch einen leuchtenden Glaskubus. Behalte denselben Kamerawinkel und dieselbe Beleuchtung. Lass den Kubus mit realistischen Schatten, Reflexionen und Bewegungen in die Szene passen. Ändere nicht die Person oder den Hintergrund.",
+            fields: [
+                { id: "old_obj", label: "Altes Objekt (wird ersetzt)", placeholder: "z.B. the plastic cup" },
+                { id: "new_obj", label: "Neues Objekt", placeholder: "z.B. a glowing glass cube" },
+                { id: "keep_details", label: "Unveränderte Elemente", placeholder: "z.B. the person or background" }
+            ],
+            defaults: { old_obj: "the plastic cup", new_obj: "a glowing glass cube", keep_details: "the person or background" }
+        },
+        style_transfer: {
+            title: "6. 🎨 Style transfer (Stilübertragung)",
+            descDe: "Wende einen künstlerischen oder nostalgischen Film-Look auf das Video an, inklusive Textur, Korn und Farbton.",
+            templateEn: "Apply a {style} look to this video. Add {style_details}, {color_tone}, and {texture}. Keep {subject} unchanged. Do not change {keep_details}.",
+            templateDe: "Wende einen {style}-Look auf dieses Video an. Füge {style_details}, {color_tone} und {texture} hinzu. Behalte {subject} unverändert. Ändere nicht {keep_details}.",
+            exampleEn: "Apply a 1970s film look to this video. Add soft grain, warm colour tone, and vintage lens texture. Keep the speaker unchanged. Do not change the face, clothing, or background.",
+            exampleDe: "Wende einen 1970er-Film-Look auf dieses Video an. Füge weiches Korn, warmen Farbton und Vintage-Linsen-Textur hinzu. Behalte den Sprecher unverändert. Ändere nicht Gesicht, Kleidung oder Hintergrund.",
+            fields: [
+                { id: "style", label: "Stil / Ära", placeholder: "z.B. 1970s film" },
+                { id: "style_details", label: "Stil-Details", placeholder: "z.B. soft grain" },
+                { id: "color_tone", label: "Farbton / Color Tone", placeholder: "z.B. warm colour tone" },
+                { id: "texture", label: "Textur", placeholder: "z.B. vintage lens texture" },
+                { id: "subject", label: "Hauptmotiv", placeholder: "z.B. the speaker" },
+                { id: "keep_details", label: "Unveränderte Details", placeholder: "z.B. face, clothing, or background" }
+            ],
+            defaults: { style: "1970s film", style_details: "soft grain", color_tone: "warm colour tone", texture: "vintage lens texture", subject: "the speaker", keep_details: "the face, clothing, or background" }
+        },
+        product_ad: {
+            title: "7. 📢 Product ad edit (Produktwerbung bearbeiten)",
+            descDe: "Verwandle ein einfaches Produktvideo in einen professionellen High-End Werbespot.",
+            templateEn: "Edit this product video into a premium ad for {product_name}. Keep the product's {product_features} unchanged. Add {bg_style}, {lighting_style}, and {camera_move}. Make the product look realistic and high-quality.",
+            templateDe: "Bearbeite dieses Produktvideo zu einer Premium-Werbung für {product_name}. Behalte {product_features} des Produkts unverändert. Füge {bg_style}, {lighting_style} und {camera_move} hinzu. Lass das Produkt realistisch und hochwertig aussehen.",
+            exampleEn: "Edit this product video into a premium ad for a smartwatch. Keep the product's shape, colour, logo, and screen unchanged. Add a clean black studio background, soft spotlighting, and slow close-up camera movement. Make the product look realistic and high-quality.",
+            exampleDe: "Bearbeite dieses Produktvideo zu einer Premium-Werbung für eine Smartwatch. Behalte Form, Farbe, Logo und Bildschirm des Produkts unverändert. Füge einen sauberen schwarzen Studio-Hintergrund, weiches Spotlicht und langsame Nahaufnahme-Kamerabewegung hinzu. Lass das Produkt realistisch und hochwertig aussehen.",
+            fields: [
+                { id: "product_name", label: "Produktname / Marke", placeholder: "z.B. a smartwatch" },
+                { id: "product_features", label: "Geschützte Merkmale", placeholder: "z.B. shape, colour, logo, and screen" },
+                { id: "bg_style", label: "Hintergrundstil", placeholder: "z.B. a clean black studio background" },
+                { id: "lighting_style", label: "Beleuchtungsstil", placeholder: "z.B. soft spotlighting" },
+                { id: "camera_move", label: "Kamerabewegung", placeholder: "z.B. slow close-up camera movement" }
+            ],
+            defaults: { product_name: "a smartwatch", product_features: "shape, colour, logo, and screen", bg_style: "a clean black studio background", lighting_style: "soft spotlighting", camera_move: "slow close-up camera movement" }
+        },
+        action_fx: {
+            title: "8. ⚡ Action effects (Aktionseffekte)",
+            descDe: "Füge visuelle Effekte (Funken, Magie, Rauch, Blitze) an einem exakten Zeitpunkt der Bewegung hinzu.",
+            templateEn: "Add {vfx} to this video when {action_trigger}. The effect should start exactly when {timing}. Keep {keep_details} unchanged. Make the effect match the motion naturally.",
+            templateDe: "Füge {vfx} zu diesem Video hinzu, wenn {action_trigger}. Der Effekt soll genau dann starten, wenn {timing}. Behalte {keep_details} unverändert. Lass den Effekt natürlich zur Bewegung passen.",
+            exampleEn: "Add neon sparks to this video when the skateboard lands. The effect should start exactly when the wheels touch the ground. Keep the skateboarder, background, and camera movement unchanged. Make the effect match the motion naturally.",
+            exampleDe: "Füge Neon-Funken zu diesem Video hinzu, wenn das Skateboard landet. Der Effekt soll genau dann starten, wenn die Räder den Boden berühren. Behalte den Skateboarder, Hintergrund und Kamerabewegung unverändert. Lass den Effekt natürlich zur Bewegung passen.",
+            fields: [
+                { id: "vfx", label: "Visueller Effekt (VFX)", placeholder: "z.B. neon sparks" },
+                { id: "action_trigger", label: "Auslösende Aktion", placeholder: "z.B. the skateboard lands" },
+                { id: "timing", label: "Exakter Zeitpunkt (Timing-Detail)", placeholder: "z.B. the wheels touch the ground" },
+                { id: "keep_details", label: "Unveränderte Elemente", placeholder: "z.B. the skateboarder, background, and camera movement" }
+            ],
+            defaults: { vfx: "neon sparks", action_trigger: "the skateboard lands", timing: "the wheels touch the ground", keep_details: "the skateboarder, background, and camera movement" }
+        },
+        face_protect: {
+            title: "9. 👤 Face and identity protection (Gesicht und Identität schützen)",
+            descDe: "Schütze das Gesicht und die Identität einer Person zu 100%, während nur spezifische Dinge verändert werden.",
+            templateEn: "Keep {subject}'s face exactly the same as the original video. Do not change {facial_features}. Only edit {edit_target}.",
+            templateDe: "Behalte {subject}'s Gesicht exakt wie im Originalvideo. Ändere nicht {facial_features}. Bearbeite nur {edit_target}.",
+            exampleEn: "Keep my face exactly the same as the original video. Do not change my eyes, nose, mouth, skin tone, hair, or facial expression. Only edit the background and lighting.",
+            exampleDe: "Behalte mein Gesicht exakt wie im Originalvideo. Ändere nicht meine Augen, Nase, Mund, Hautton, Haare oder den Gesichtsausdruck. Bearbeite nur den Hintergrund und die Beleuchtung.",
+            fields: [
+                { id: "subject", label: "Person / Model", placeholder: "z.B. my" },
+                { id: "facial_features", label: "Geschützte Gesichtsmerkmale", placeholder: "z.B. my eyes, nose, mouth, skin tone, hair, or facial expression" },
+                { id: "edit_target", label: "Was allein bearbeitet werden soll", placeholder: "z.B. the background and lighting" }
+            ],
+            defaults: { subject: "my", facial_features: "my eyes, nose, mouth, skin tone, hair, or facial expression", edit_target: "the background and lighting" }
+        },
+        cine_upgrade: {
+            title: "10. 🎬 Cinematic upgrade (Cinematischer Upgrade)",
+            descDe: "Werte ein beliebiges Alltags-Video optisch auf Hollywood-Kino-Niveau mit warmem Licht und Luxus-Stimmung auf.",
+            templateEn: "Edit this video into a cinematic clip. Keep {subject} unchanged. Improve the lighting to look like {lighting_style}. Add {cinematic_elements}. Do not change {keep_details}.",
+            templateDe: "Bearbeite dieses Video zu einem cinematischen Clip. Behalte {subject} unverändert. Verbessere die Beleuchtung, sodass sie wie {lighting_style} aussieht. Füge {cinematic_elements} hinzu. Ändere nicht {keep_details}.",
+            exampleEn: "Edit this video into a cinematic clip. Keep my face and outfit unchanged. Improve the lighting to look like warm sunset light. Add slow camera movement, soft contrast, and a calm luxury mood. Do not change the background or my body movement.",
+            exampleDe: "Bearbeite dieses Video zu einem cinematischen Clip. Behalte mein Gesicht und Outfit unverändert. Verbessere die Beleuchtung, sodass sie wie warmes Sonnenuntergangslicht aussieht. Füge langsame Kamerabewegung, weichen Kontrast und eine ruhige Luxury-Stimmung hinzu. Ändere nicht den Hintergrund oder meine Körperbewegung.",
+            fields: [
+                { id: "subject", label: "Unverändertes Hauptmotiv", placeholder: "z.B. my face and outfit" },
+                { id: "lighting_style", label: "Neuer Beleuchtungsstil", placeholder: "z.B. warm sunset light" },
+                { id: "cinematic_elements", label: "Kamera-, Farb- & Stimmungs-Elemente", placeholder: "z.B. slow camera movement, soft contrast, and a calm luxury mood" },
+                { id: "keep_details", label: "Unveränderte Details", placeholder: "z.B. the background or my body movement" }
+            ],
+            defaults: { subject: "my face and outfit", lighting_style: "warm sunset light", cinematic_elements: "slow camera movement, soft contrast, and a calm luxury mood", keep_details: "the background or my body movement" }
+        }
+    };
+
+    let veoEditInitialized = false;
+
+    window.initVeoEditModule = function() {
+        if (veoEditInitialized) return;
+        veoEditInitialized = true;
+        window.applyVeoEditPreset();
+    };
+
+    window.applyVeoEditPreset = function() {
+        const key = document.getElementById('veoEditPresetSelect')?.value || 'cam_angle';
+        const preset = veoEditPresets[key];
+        if (!preset) return;
+
+        // Render info box
+        document.getElementById('veoEditTitle').innerText = preset.title;
+        document.getElementById('veoEditDescDe').innerText = preset.descDe;
+        document.getElementById('veoEditTemplateEn').innerText = preset.templateEn;
+        document.getElementById('veoEditExample').innerHTML = `<strong>Beispiel:</strong> ${preset.exampleDe}`;
+
+        // Render input fields
+        const container = document.getElementById('veoEditInputsContainer');
+        if (container) {
+            container.innerHTML = '';
+
+            preset.fields.forEach(field => {
+                const fieldWrapper = document.createElement('div');
+                fieldWrapper.innerHTML = `
+                    <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600; margin-bottom: 4px; display: block;">
+                        ${field.label}:
+                    </label>
+                    <input type="text" id="veoEditField_${field.id}" placeholder="${field.placeholder}" value="${preset.defaults[field.id] || ''}" style="width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; font-size: 0.82rem;">
+                `;
+                container.appendChild(fieldWrapper);
+            });
+        }
+
+        const outContainer = document.getElementById('veoEditOutputContainer');
+        if (outContainer) outContainer.style.display = 'none';
+    };
+
+    window.loadVeoEditExampleValues = function() {
+        const key = document.getElementById('veoEditPresetSelect')?.value || 'cam_angle';
+        const preset = veoEditPresets[key];
+        if (!preset) return;
+
+        preset.fields.forEach(field => {
+            const input = document.getElementById(`veoEditField_${field.id}`);
+            if (input && preset.defaults[field.id]) {
+                input.value = preset.defaults[field.id];
+            }
+        });
+        showToast("Beispielwerte geladen! 💡");
+    };
+
+    window.generateVeoEditPrompt = function() {
+        const key = document.getElementById('veoEditPresetSelect')?.value || 'cam_angle';
+        const preset = veoEditPresets[key];
+        if (!preset) return;
+
+        let promptEn = preset.templateEn;
+        let promptDe = preset.templateDe;
+
+        preset.fields.forEach(field => {
+            const val = document.getElementById(`veoEditField_${field.id}`)?.value.trim() || field.placeholder;
+            promptEn = promptEn.replace(`{${field.id}}`, val);
+            promptDe = promptDe.replace(`{${field.id}}`, val);
+        });
+
+        document.getElementById('veoEditFinalPromptEn').innerText = promptEn;
+        document.getElementById('veoEditFinalPromptDe').innerText = promptDe;
+        document.getElementById('veoEditOutputContainer').style.display = 'block';
+
+        showToast("Video Editing Prompt erfolgreich generiert! ✂️🎬");
+    };
+
+    window.askVeoEditAdv = async function() {
+        const inputEl = document.getElementById('veoEditAdvInput');
+        const userText = inputEl?.value.trim();
+        if (!userText) {
+            showToast("Bitte gib eine Idee oder Änderungswunsch ein!", true);
+            return;
+        }
+
+        const chatBox = document.getElementById('veoEditChatBox');
+        const btn = document.getElementById('veoEditAdvBtn');
+        const spinner = document.getElementById('veoEditAdvSpinner');
+
+        // Add user message to chat
+        const userMsg = document.createElement('div');
+        userMsg.style.cssText = "padding: 8px 12px; border-radius: 8px; line-height: 1.4; max-width: 90%; background: var(--primary); align-self: flex-end; color: white; font-size: 0.8rem;";
+        userMsg.innerText = userText;
+        chatBox.appendChild(userMsg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        inputEl.value = '';
+
+        if (btn) btn.disabled = true;
+        if (spinner) spinner.style.display = 'inline-block';
+
+        const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
+
+        const systemPrompt = `Du bist ein hochspezialisierter KI-Regisseur und Copilot für Video-zu-Video Editing (Gemini 3.5 / Veo 3.1 / Runway Gen-3 / Sora).
+Nutzer-Wunsch: "${userText}"
+
+Deine Aufgabe:
+Wähle aus den folgenden 10 Kategorien GENAU EINE aus, die am besten zum Nutzer-Wunsch passt:
+1. "cam_angle": Kamerawinkel / Perspektive ändern (Camera angle change)
+2. "outfit": Outfit / Kleidung ändern (Outfit change)
+3. "obj_remove": Objekt / Gegenstand / störende Person entfernen (Object removal)
+4. "bg_replace": Hintergrund / Ort komplett ersetzen (Background replacement)
+5. "obj_replace": Ein Objekt gegen ein anderes austauschen (Object replacement)
+6. "style_transfer": Künstlerischer Stil / Epoche / Filmlook (Style transfer)
+7. "product_ad": Werbespot / Produktwerbung bearbeiten (Product ad edit)
+8. "action_fx": Visuelle Effekte / VFX / Funken / Rauch bei Aktion (Action effects)
+9. "face_protect": Gesicht & Identität schützen, nur Umfeld ändern (Face protection)
+10. "cine_upgrade": Allgemeiner cinematische Aufwertung / Licht-Upgrade (Cinematic upgrade)
+
+Antworte STRIKT mit folgendem JSON-Format (kein Markdown drumherum, nur valides JSON):
+{
+  "preset": "EXAKTE_KEY_OBEN",
+  "explanation": "Kurze freundliche deutsche Erklärung für den Nutzer, was ausgewählt und eingestellt wurde.",
+  "fields": {
+    // Fülle HIER ALLE benötigten Feld-Variablen in präzisem ENGLISCH aus, die für diese gewählte Kategorie nötig sind:
+    // cam_angle: "cam_angle", "subject", "action", "details"
+    // outfit: "subject", "new_outfit", "keep_details"
+    // obj_remove: "obj_to_remove", "bg_context", "keep_details"
+    // bg_replace: "new_location", "subject", "keep_details"
+    // obj_replace: "old_obj", "new_obj", "keep_details"
+    // style_transfer: "style", "style_details", "color_tone", "texture", "subject", "keep_details"
+    // product_ad: "product_name", "product_features", "bg_style", "lighting_style", "camera_move"
+    // action_fx: "vfx", "action_trigger", "timing", "keep_details"
+    // face_protect: "subject", "facial_features", "edit_target"
+    // cine_upgrade: "subject", "lighting_style", "cinematic_elements", "keep_details"
+  }
+}`;
+
+        try {
+            const resp = await fetch(BACKEND_API_URL + '/api/optimize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    goal: userText,
+                    model: 'gemini-3.5-flash-lite',
+                    system_prompt: systemPrompt,
+                    lm_url: lmUrl
+                })
+            });
+
+            if (!resp.ok) throw new Error("Fehler beim Abrufen der KI-Antwort");
+
+            const data = await resp.json();
+            const jsonRes = extractJSON(data.optimized_goal);
+
+            if (jsonRes && jsonRes.preset && veoEditPresets[jsonRes.preset]) {
+                // 1. Change Preset Dropdown
+                const selectEl = document.getElementById('veoEditPresetSelect');
+                if (selectEl) selectEl.value = jsonRes.preset;
+
+                // 2. Apply Preset Layout & Fields
+                window.applyVeoEditPreset();
+
+                // 3. Fill in generated field values into inputs
+                if (jsonRes.fields) {
+                    Object.keys(jsonRes.fields).forEach(fKey => {
+                        const inputField = document.getElementById(`veoEditField_${fKey}`);
+                        if (inputField) inputField.value = jsonRes.fields[fKey];
+                    });
+                }
+
+                // 4. Generate Output Prompt
+                window.generateVeoEditPrompt();
+
+                // 5. Add AI response to Chat
+                const aiMsg = document.createElement('div');
+                aiMsg.style.cssText = "padding: 10px 12px; border-radius: 8px; line-height: 1.4; max-width: 95%; background: var(--bg-input); border: 1px solid var(--border-color); align-self: flex-start; color: var(--text-main); font-size: 0.8rem;";
+                aiMsg.innerHTML = `🤖 <strong>Copilot:</strong> ${jsonRes.explanation || "Kategorie wurde gewählt und alle Felder befüllt!"}`;
+                chatBox.appendChild(aiMsg);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                showToast("KI Copilot hat Kategorie gewählt & alle Felder optimiert! ✨");
+            } else {
+                throw new Error("Ungültiges KI-Format empfangen");
+            }
+        } catch (err) {
+            console.error(err);
+            const errMsg = document.createElement('div');
+            errMsg.style.cssText = "padding: 8px 12px; border-radius: 8px; line-height: 1.4; max-width: 90%; background: rgba(239,68,68,0.2); border: 1px solid #ef4444; align-self: flex-start; color: #fca5a5; font-size: 0.8rem;";
+            errMsg.innerText = `Fehler: ${err.message}`;
+            chatBox.appendChild(errMsg);
+            showToast("Fehler bei KI-Verarbeitung", true);
+        } finally {
+            if (btn) btn.disabled = false;
+            if (spinner) spinner.style.display = 'none';
+        }
     };
 
     // --- VISION IMAGE TO VIDEO HANDLERS ---
