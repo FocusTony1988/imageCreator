@@ -1192,3 +1192,23 @@ input[type="radio"] {
     color: #c7d2fe;
 }
 
+@keyframes pulseGlow {
+    0% {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+    }
+    50% {
+        border-color: #818cf8;
+        box-shadow: 0 0 12px rgba(129, 140, 248, 0.6);
+    }
+    100% {
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 0 0 rgba(99, 102, 241, 0);
+    }
+}
+
+.pulse-highlight {
+    animation: pulseGlow 1.8s ease-in-out;
+}
+
+

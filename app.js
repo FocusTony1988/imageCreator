@@ -508,28 +508,87 @@ Every value inside the JSON must be written in English.`;
         }
     }
 
+    function getCurrentGenContext() {
+        const context = {};
+        const fieldIds = [
+            'sceneType', 'location', 'lighting', 'lightingSetup', 'weather',
+            'focalLength', 'apertureDoF', 'composition', 'colorGrading', 'vfxParticles',
+            'surfaceCondition', 'detailLevel', 'skinPhysics', 'microDetails',
+            'sensorPhysics', 'opticsLogic', 'lightingLogic', 'colorFidelity', 'filmStock',
+            'gender', 'ageGroup', 'ethnicity', 'bodyType', 'hairColor', 'hairStyle',
+            'eyeColor', 'expression', 'clothing', 'bikiniStyle', 'action', 'celebrityName'
+        ];
+        fieldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value && el.value.trim()) {
+                context[id] = el.value.trim();
+            }
+        });
+
+        const rawPromptEl = document.getElementById('rawPrompt');
+        if (rawPromptEl && rawPromptEl.innerText && rawPromptEl.innerText.trim()) {
+            context['currentPrompt'] = rawPromptEl.innerText.trim();
+        }
+
+        const quickBotResultEl = document.getElementById('quickBotResult');
+        if (quickBotResultEl && quickBotResultEl.value && quickBotResultEl.value.trim()) {
+            context['baseConcept'] = quickBotResultEl.value.trim();
+        }
+
+        return context;
+    }
+
     window.setCopilotPreset = function(ideaText) {
         const el = document.getElementById('copilotIdea');
         if (el) {
             el.value = ideaText;
             el.focus();
+            updateCopilotModeUI();
         }
     };
+
+    function updateCopilotModeUI() {
+        const context = getCurrentGenContext();
+        const hasContext = Object.keys(context).length >= 2;
+        const badge = document.getElementById('copilotModeBadge');
+        const btnText = document.getElementById('btnRunCopilotText');
+
+        if (badge) {
+            badge.style.display = hasContext ? 'inline-block' : 'none';
+        }
+        if (btnText) {
+            btnText.innerText = hasContext 
+                ? "🔄 Smarte Änderung anwenden & Regler aktualisieren"
+                : "⚡ Dropdowns & Prompt automatisch einstellen";
+        }
+    }
 
     window.runCopilot = async function() {
         const btn = document.getElementById('btnRunCopilot');
         const idea = document.getElementById('copilotIdea')?.value.trim();
         const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
+        const modelEl = document.getElementById('modelSelectMain');
+        const model = modelEl ? modelEl.value : 'gemini-3.5-flash-lite';
+        
         const reasoningCard = document.getElementById('copilotReasoningCard');
         const reasoningText = document.getElementById('copilotReasoningText');
+        const changesBox = document.getElementById('copilotChangesSummaryBox');
+        const changesText = document.getElementById('copilotChangesSummaryText');
+        const baseBox = document.getElementById('copilotBaseConceptBox');
+        const baseText = document.getElementById('copilotBaseConceptText');
+        const countBadge = document.getElementById('copilotChangeCountBadge');
+        const cardHeader = document.getElementById('copilotCardHeader');
 
         if (!idea) {
-            showToast("Bitte gib zuerst deine Idee in das Co-Pilot Feld ein!", true);
+            showToast("Bitte gib zuerst deine Idee oder Änderung in das Co-Pilot Feld ein!", true);
             return;
         }
 
+        const currentContext = getCurrentGenContext();
+        const isModification = Object.keys(currentContext).length >= 2;
+
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner" style="display:inline-block; margin-right:5px;"></span> Co-Pilot analysiert mit Gemini 3.5 Flash Lite...';
+        btn.innerHTML = `<span class="spinner" style="display:inline-block; margin-right:5px;"></span> Co-Pilot ${isModification ? 'verfeinert & ändert' : 'analysiert'} mit Gemini...`;
 
         try {
             const response = await fetch(BACKEND_API_URL + '/api/copilot', {
@@ -537,6 +596,9 @@ Every value inside the JSON must be written in English.`;
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     idea: idea,
+                    current_context: currentContext,
+                    is_modification: isModification,
+                    model: model,
                     lm_url: lmUrl
                 })
             });
@@ -548,8 +610,8 @@ Every value inside the JSON must be written in English.`;
 
             const data = await response.json();
 
+            let configuredCount = 0;
             if (data.fields && typeof data.fields === 'object') {
-                let configuredCount = 0;
                 for (const [fieldId, val] of Object.entries(data.fields)) {
                     if (!val) continue;
                     const el = document.getElementById(fieldId);
@@ -562,7 +624,11 @@ Every value inside the JSON must be written in English.`;
                             if (opt.value) {
                                 const optLower = String(opt.value).toLowerCase();
                                 if (optLower === valLower || optLower.includes(valLower) || valLower.includes(optLower)) {
-                                    el.value = opt.value;
+                                    if (el.value !== opt.value) {
+                                        el.value = opt.value;
+                                        el.classList.add('pulse-highlight');
+                                        setTimeout(() => el.classList.remove('pulse-highlight'), 2000);
+                                    }
                                     matched = true;
                                     configuredCount++;
                                     break;
@@ -572,7 +638,11 @@ Every value inside the JSON must be written in English.`;
                         if (!matched) {
                             for (let opt of el.options) {
                                 if (opt.text && String(opt.text).toLowerCase().includes(valLower)) {
-                                    el.value = opt.value;
+                                    if (el.value !== opt.value) {
+                                        el.value = opt.value;
+                                        el.classList.add('pulse-highlight');
+                                        setTimeout(() => el.classList.remove('pulse-highlight'), 2000);
+                                    }
                                     matched = true;
                                     configuredCount++;
                                     break;
@@ -596,7 +666,7 @@ Every value inside the JSON must be written in English.`;
                 if (quickBotResultEl && data.baseConcept) quickBotResultEl.value = data.baseConcept;
 
                 if (isPersonPresent) {
-                    if (personCheck) {
+                    if (personCheck && !personCheck.checked) {
                         personCheck.checked = true;
                         personCheck.dispatchEvent(new Event('change'));
                     }
@@ -604,38 +674,77 @@ Every value inside the JSON must be written in English.`;
                     if (actionEl && (data.fields?.action || data.baseConcept)) {
                         actionEl.value = data.fields?.action || data.baseConcept;
                     }
-                } else {
-                    if (personCheck) {
+                } else if (!isModification) {
+                    if (personCheck && personCheck.checked) {
                         personCheck.checked = false;
                         personCheck.dispatchEvent(new Event('change'));
                     }
-                    // Leere Personen-Felder explizit
                     const personFieldIds = ['gender', 'ageGroup', 'ethnicity', 'bodyType', 'hairColor', 'hairStyle', 'eyeColor', 'expression', 'clothing', 'bikiniStyle', 'action'];
                     personFieldIds.forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.value = '';
                     });
                 }
-
-                showToast(`✨ Co-Pilot hat ${configuredCount} Regler für dich optimiert!`);
             }
 
-            if (data.reasoning) {
-                if (reasoningCard && reasoningText) {
-                    reasoningText.innerText = data.reasoning;
-                    reasoningCard.style.display = 'block';
+            // Render Reasoning & Changes Diff Card
+            if (reasoningCard) {
+                if (cardHeader) {
+                    cardHeader.innerText = data.isModification 
+                        ? "✨ Smarte Änderung erfolgreich angewendet"
+                        : "🎬 Co-Pilot Treatment & Wirkungs-Analyse";
                 }
+
+                if (countBadge) {
+                    countBadge.innerText = `${configuredCount} Regler optimiert`;
+                    countBadge.style.display = 'inline-block';
+                }
+
+                if (changesBox && changesText) {
+                    if (data.changes_summary) {
+                        changesText.innerText = data.changes_summary;
+                        changesBox.style.display = 'block';
+                    } else {
+                        changesBox.style.display = 'none';
+                    }
+                }
+
+                if (reasoningText && data.reasoning) {
+                    reasoningText.innerText = data.reasoning;
+                }
+
+                if (baseBox && baseText && data.baseConcept) {
+                    baseText.innerText = data.baseConcept;
+                    baseBox.style.display = 'block';
+                }
+
+                reasoningCard.style.display = 'block';
+                reasoningCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
+
+            showToast(data.isModification 
+                ? `🔄 Änderungen klug eingearbeitet (${configuredCount} Regler aktualisiert)!`
+                : `✨ Co-Pilot hat ${configuredCount} Regler für dich optimiert!`);
 
             updateGenSummary();
+            updateCopilotModeUI();
         } catch (e) {
             console.error("Co-Pilot Fehler:", e);
             showToast("Fehler beim Co-Pilot Aufruf: " + e.message, true);
+        } finally {
+            btn.disabled = false;
+            updateCopilotModeUI();
         }
-
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ Dropdowns automatisch durch Co-Pilot einstellen';
     };
+
+    // Attach dynamic mode listener to copilotIdea
+    document.addEventListener('DOMContentLoaded', () => {
+        const copilotInput = document.getElementById('copilotIdea');
+        if (copilotInput) {
+            copilotInput.addEventListener('focus', updateCopilotModeUI);
+            copilotInput.addEventListener('input', updateCopilotModeUI);
+        }
+    });
 
     // --- WHITE PAPER UX ENHANCEMENTS ---
     let currentExportFormat = 'mj'; // 'mj', 'flux', 'json', 'video'

@@ -138,44 +138,69 @@
                     </div>
 
                     <!-- AI Prompt Co-Pilot Widget -->
-                    <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.4); background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9)); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div class="card" style="border: 1px solid rgba(99, 102, 241, 0.4); background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95)); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
                             <div class="card-title" style="margin: 0; color: #a5b4fc; display: flex; align-items: center; gap: 8px;">
                                 <i class="fa-solid fa-robot" style="color: #818cf8; font-size: 1.1rem;"></i> 🤖 AI Prompt Co-Pilot
                             </div>
-                            <span style="font-size: 0.65rem; background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.4); padding: 2px 8px; border-radius: 12px; font-weight: 600;">
-                                Gemini 3.5 Flash Lite Engine
-                            </span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <span id="copilotModeBadge" style="font-size: 0.65rem; background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 12px; font-weight: 600; display: none;">
+                                    🔄 Smarte Änderung aktiv
+                                </span>
+                                <span style="font-size: 0.65rem; background: rgba(99, 102, 241, 0.2); color: #c7d2fe; border: 1px solid rgba(99, 102, 241, 0.4); padding: 2px 8px; border-radius: 12px; font-weight: 600;">
+                                    Gemini 3.5 Flash Lite Engine
+                                </span>
+                            </div>
                         </div>
                         <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.4;">
-                            Überfordert mit den vielen Reglern? Beschreibe einfach deine Idee – der Co-Pilot analysiert sie und stellt alle Kamera-, Licht- & Effekt-Dropdowns automatisch für dich ein!
+                            Beschreibe deine <strong>neue Bildidee</strong> oder gib eine <strong>gezielte Änderung</strong> ein (z. B. <em>„Mach es regnerischer mit Neonreflexionen“</em> oder <em>„Wechsle zu 85mm Bokeh“</em>). Der Co-Pilot passt alle Regler intelligent an!
                         </p>
 
                         <div style="position: relative; margin-bottom: 10px;">
-                            <textarea id="copilotIdea" placeholder="z.B. Ein stimmungsvolles Cyberpunk-Portrait einer Frau im nassen Neon-Regen von Tokio..." style="width: 100%; height: 65px; padding: 10px 70px 10px 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; color: #f8fafc; font-size: 0.8rem; resize: none;"></textarea>
+                            <textarea id="copilotIdea" placeholder="z.B. Ein stimmungsvolles Cyberpunk-Portrait einer Frau... ODER: 'Ändere die Beleuchtung zu Sonnenuntergang und mach den Blick dramatischer'" style="width: 100%; height: 68px; padding: 10px 70px 10px 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; color: #f8fafc; font-size: 0.82rem; resize: none;"></textarea>
                             <button class="magic-polish-btn" onclick="magicPolish('copilotIdea')" title="Idee mit KI aufwerten"><i class="fa-solid fa-wand-magic-sparkles"></i> Polish</button>
                         </div>
 
-                        <!-- Schnell-Ideen Tags -->
+                        <!-- Schnell-Aktionen & Smart Modifications -->
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-                            <span style="font-size: 0.68rem; color: #64748b; margin-right: 4px; align-self: center;">⚡ Schnellauswahl:</span>
+                            <span style="font-size: 0.68rem; color: #64748b; margin-right: 4px; align-self: center;">⚡ Schnellauswahl & Tweaks:</span>
                             <button class="style-btn" onclick="setCopilotPreset('Cyberpunk Portrait einer Frau im Neon-Regen')" style="font-size: 0.68rem; padding: 3px 8px;">🌆 Cyberpunk Regen</button>
-                            <button class="style-btn" onclick="setCopilotPreset('Magische Fantasy-Landschaft mit leuchtenden Sporen')" style="font-size: 0.68rem; padding: 3px 8px;">✨ Magische Landschaft</button>
-                            <button class="style-btn" onclick="setCopilotPreset('High-Fashion Portrait im Studio mit 85mm Objektiv')" style="font-size: 0.68rem; padding: 3px 8px;">📸 High-Fashion Studio</button>
-                            <button class="style-btn" onclick="setCopilotPreset('Dramatisches Wikinger-Portrait bei Kerzenlicht')" style="font-size: 0.68rem; padding: 3px 8px;">⚔️ Wikinger Portrait</button>
+                            <button class="style-btn" onclick="setCopilotPreset('Mach das Licht dramatischer mit tiefen Schatten und Chiaroscuro-Kontrast')" style="font-size: 0.68rem; padding: 3px 8px;">🔥 Chiaroscuro Tweak</button>
+                            <button class="style-btn" onclick="setCopilotPreset('Ändere die Kamera auf 85mm f/1.8 Portrait-Optik mit butterweichem Bokeh')" style="font-size: 0.68rem; padding: 3px 8px;">📸 85mm Bokeh Tweak</button>
+                            <button class="style-btn" onclick="setCopilotPreset('Füge nassen Asphalt, Pfützen-Reflexionen und sanften Regen hinzu')" style="font-size: 0.68rem; padding: 3px 8px;">🌧️ Regen & Reflexionen</button>
+                            <button class="style-btn" onclick="setCopilotPreset('Warmes Sonnenuntergangslicht (Golden Hour) mit weichem Gegenlicht')" style="font-size: 0.68rem; padding: 3px 8px;">🌅 Golden Hour</button>
                         </div>
 
                         <button class="btn btn-primary" id="btnRunCopilot" onclick="runCopilot()" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #6366f1, #4f46e5); font-weight: 600;">
                             <span class="spinner" id="copilotSpinner" style="display:none;"></span>
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ Dropdowns automatisch durch Co-Pilot einstellen
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnRunCopilotText">⚡ Dropdowns & Prompt durch Co-Pilot optimieren</span>
                         </button>
 
-                        <!-- Erklär-Box ("Warum diese Einstellungen?") -->
-                        <div id="copilotReasoningCard" style="display: none; margin-top: 12px; padding: 10px; background: rgba(99, 102, 241, 0.1); border-left: 3px solid #818cf8; border-radius: 0 6px 6px 0;">
-                            <div style="font-size: 0.72rem; font-weight: 700; color: #a5b4fc; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
-                                <i class="fa-solid fa-lightbulb"></i> Co-Pilot Erklärung (Lerntransfer):
+                        <!-- Interaktive Erklär- & Treatment-Karte -->
+                        <div id="copilotReasoningCard" style="display: none; margin-top: 14px; padding: 14px; background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)); border: 1px solid rgba(99, 102, 241, 0.4); border-left: 4px solid var(--primary); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 0.78rem; font-weight: 700; color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-brain"></i> <span id="copilotCardHeader">Co-Pilot Wirkungs-Analyse & Update</span>
+                                </div>
+                                <span id="copilotChangeCountBadge" class="treatment-badge-pill" style="display: none;">0 Regler angepasst</span>
                             </div>
-                            <p id="copilotReasoningText" style="font-size: 0.75rem; color: #cbd5e1; margin: 0; line-height: 1.4;"></p>
+
+                            <!-- Changes Diff Summary -->
+                            <div id="copilotChangesSummaryBox" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 6px 10px; border-radius: 6px; margin-bottom: 8px;">
+                                <div style="font-size: 0.7rem; font-weight: 700; color: #6ee7b7; margin-bottom: 2px;">
+                                    <i class="fa-solid fa-arrows-rotate"></i> Durchgeführte Änderungen:
+                                </div>
+                                <div id="copilotChangesSummaryText" style="font-size: 0.75rem; color: #e2e8f0;"></div>
+                            </div>
+
+                            <!-- Reasoning Text -->
+                            <p id="copilotReasoningText" style="font-size: 0.78rem; color: #cbd5e1; margin: 0 0 10px 0; line-height: 1.45;"></p>
+
+                            <!-- Base Concept Preview -->
+                            <div id="copilotBaseConceptBox" style="display: none; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 10px; border-radius: 6px;">
+                                <div style="font-size: 0.68rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; margin-bottom: 2px;">Vollständiger Englischer Prompt:</div>
+                                <div id="copilotBaseConceptText" style="font-size: 0.78rem; color: #f8fafc; font-family: monospace; max-height: 80px; overflow-y: auto; line-height: 1.35;"></div>
+                            </div>
                         </div>
                     </div>
 
