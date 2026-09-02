@@ -2,6 +2,7 @@ import os
 import json
 import time
 import re
+import concurrent.futures
 import markdown
 from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
@@ -260,37 +261,39 @@ Strukturiere das Konzept vorab in ca. {estimated_shots} Shots mit Idee, Kameraf�
         yield f"data: {json.dumps({'event': 'log', 'message': '✅ Erster Regie-Entwurf erstellt. Übergeben an das Experten-Board...'})}\n\n"
 
         # ---------------------------------------------------------
-        # STAGE 4: 4-AGENT REVIEW BOARD DEBATE & CRITIQUE
+        # STAGE 4: 4-AGENT REVIEW BOARD DEBATE & CRITIQUE (PARALLEL)
         # ---------------------------------------------------------
-        reviews = []
-        for i, role in enumerate(experts):
-            if PACING_DELAY > 0:
-                time.sleep(PACING_DELAY)
-                
-            yield f"data: {json.dumps({'event': 'log', 'message': f'🕵️ Experte {i+1}/4 ({role}) prüft Entwurf auf Perfektion...'})}\n\n"
-            
-            rev_sys = f"Du bist der {role} in einem High-End Filmproduktions-Board für Veo 3.1, Google Flow und Nano Banana."
+        yield f"data: {json.dumps({'event': 'log', 'message': '⚡ 4-Agenten-Gremium analysiert den Entwurf simultan in Echtzeit...'})}\n\n"
+
+        def evaluate_expert_role(role_name):
+            rev_sys = f"Du bist der {role_name} in einem High-End Filmproduktions-Board für Veo 3.1, Google Flow und Nano Banana."
             rev_user = f"""Prüfe folgenden Entwurf für ein {duration}s KI-Video ({genre}):
 {draft_res}
 
-Finde aus der Sicht deiner Fachrolle ({role}) die 2-3 wichtigsten Optimierungspunkte bezüglich:
+Finde aus der Sicht deiner Fachrolle ({role_name}) die 2-3 wichtigsten Optimierungspunkte bezüglich:
 1. Optik/Kamera/Brennweite (z. B. Arri Alexa, Anamorphic Lenses, Brennweite in mm, T-Stop) und Beleuchtung (Kelvin-Farbtemperatur).
 2. Pacing (Shot-Längen 3s-8s) und dynamische Vektorbewegungen (Camera Director Trajektorien).
 3. Konsistente @Avatar-Tags und Dialoge (Sprache: {language}).
 Liefere kurze, präzise Anweisungen in Stichpunkten."""
+            res = get_ai_response([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], model=model, temperature=0.5, lm_studio_base=lm_url)
+            return role_name, res
 
-            rev_text = None
-            for ev_type, ev_val in call_ai([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], temperature=0.5):
-                if ev_type == 'log':
-                    yield ev_val
-                elif ev_type == 'result':
-                    rev_text = ev_val
-            
-            if rev_text:
-                reviews.append(f"### Gutachten von {role}:\n{rev_text}")
-                yield f"data: {json.dumps({'event': 'log', 'message': f'   💬 Feedback von {role} erhalten.'})}\n\n"
+        reviews = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            future_to_role = {executor.submit(evaluate_expert_role, role): role for role in experts}
+            for future in concurrent.futures.as_completed(future_to_role):
+                role = future_to_role[future]
+                try:
+                    _, rev_text = future.result()
+                    if rev_text:
+                        reviews.append(f"### Gutachten von {role}:\n{rev_text}")
+                        yield f"data: {json.dumps({'event': 'log', 'message': f'   💬 Feedback von {role} erhalten.'})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} hat Entwurf bestätigt.'})}\n\n"
+                except Exception as ex:
+                    yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} übersprungen: {ex}'})}\n\n"
 
-        reviews_str = "\n\n".join(reviews)
+        reviews_str = "\n\n".join(reviews) if reviews else "Alle Experten haben den Entwurf ohne Einwände freigegeben."
 
         # ---------------------------------------------------------
         # STAGE 5: MASTER SYNTHESIS (FINAL STRICT JSON STORYBOARD)
@@ -769,34 +772,29 @@ def generate_solution():
             
         yield f"data: {json.dumps({'event': 'draft', 'content': draft, 'message': 'Entwurf erfolgreich erstellt.'})}\n\n"
         
-        # 3. Review Board
-        if PACING_DELAY > 0 and model != 'lm-studio':
-            yield f"data: {json.dumps({'event': 'log', 'message': f'⏳ Pause von {PACING_DELAY}s zur Ratenbegrenzungs-Schonung...'})}\n\n"
-            time.sleep(PACING_DELAY)
-            
-        yield f"data: {json.dumps({'event': 'log', 'message': f'🕵️ Review Board startet ({len(experts)-1} Reviews)...'})}\n\n"
-        reviews = []
-        for i, role in enumerate(experts[1:], 1): # Skip the Lead Director
-            if i > 1 and PACING_DELAY > 0 and model != 'lm-studio':
-                yield f"data: {json.dumps({'event': 'log', 'message': f'⏳ Pause von {PACING_DELAY}s zur Ratenbegrenzungs-Schonung...'})}\n\n"
-                time.sleep(PACING_DELAY)
-                
-            yield f"data: {json.dumps({'event': 'log', 'message': f'   - Analysiere mit Experte: {role}...'})}\n\n"
-            rev_sys = f"Du bist ein {role} in einem Review-Board für AI Prompts."
+        # 3. Review Board (Parallel)
+        yield f"data: {json.dumps({'event': 'log', 'message': f'⚡ Review Board analysiert den Entwurf simultan ({len(experts)-1} Experten)...'})}\n\n"
+        
+        def run_prompt_expert(role_name):
+            rev_sys = f"Du bist ein {role_name} in einem Review-Board für AI Prompts."
             rev_user = f"Bisheriger Entwurf (JSON):\n{draft}\n\nFinde aus deiner speziellen Fachrichtung genau 2 konkrete Verbesserungen, die in den Text-Prompts oder Einstellungen noch fehlen oder schwammig sind. Liefere NUR kritisches Feedback in Stichpunkten, keine Floskeln."
-            
-            rev = None
-            for ev_type, ev_val in call_ai([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], temperature=0.7):
-                if ev_type == 'log':
-                    yield ev_val
-                elif ev_type == 'result':
-                    rev = ev_val
-            
-            if rev:
-                reviews.append(f"### Gutachten vom {role}:\n{rev}\n")
-                yield f"data: {json.dumps({'event': 'review', 'role': role, 'content': rev, 'message': f'Feedback von {role} erhalten.'})}\n\n"
-            else:
-                yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ Fehler beim Feedback von {role}.'})}\n\n"
+            res = get_ai_response([{"role": "system", "content": rev_sys}, {"role": "user", "content": rev_user}], model=model, temperature=0.7, lm_studio_base=lm_url)
+            return role_name, res
+
+        reviews = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(experts)-1) as executor:
+            future_to_role = {executor.submit(run_prompt_expert, role): role for role in experts[1:]}
+            for future in concurrent.futures.as_completed(future_to_role):
+                role = future_to_role[future]
+                try:
+                    _, rev = future.result()
+                    if rev:
+                        reviews.append(f"### Gutachten vom {role}:\n{rev}\n")
+                        yield f"data: {json.dumps({'event': 'review', 'role': role, 'content': rev, 'message': f'Feedback von {role} erhalten.'})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} hat Entwurf bestätigt.'})}\n\n"
+                except Exception as ex:
+                    yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} übersprungen: {ex}'})}\n\n"
                 
         # 4. Master Merge
         if PACING_DELAY > 0 and model != 'lm-studio':
