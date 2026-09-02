@@ -22,27 +22,52 @@
         setTimeout(() => toast.style.display = 'none', 4500);
     }
     
-    // Robuster JSON Extractor (Ignoriert Markdown und Fließtext lokaler Modelle)
+    // Robuster JSON Extractor (Ignoriert Markdown, bereinigt Trailing-Commas & extrahiert Objekte/Arrays)
     function extractJSON(str) {
+        if (!str || typeof str !== 'string') return null;
         try {
-            // 1. Zuerst schauen wir, ob wir Markdown haben und entfernen es sicher auf EINER Zeile
-            let cleanStr = str.replace(/```[a-zA-Z]*\n?/gi, '').replace(/```/gi, '').trim();
-            
-            // 2. Wir suchen gezielt die erste öffnende Klammer und letzte schließende Klammer
-            const startIndex = cleanStr.indexOf('{');
-            const endIndex = cleanStr.lastIndexOf('}');
-            
-            if (startIndex !== -1 && endIndex !== -1) {
-                cleanStr = cleanStr.substring(startIndex, endIndex + 1);
-                return JSON.parse(cleanStr);
+            // 1. Zuerst Markdown-Codeblöcke sicher entfernen
+            let cleanStr = str.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+
+            // 2. Suche erste '{' oder '[' und korrespondierende schließende Klammer
+            const firstObj = cleanStr.indexOf('{');
+            const firstArr = cleanStr.indexOf('[');
+            let startIndex = -1;
+            let isArray = false;
+
+            if (firstObj !== -1 && (firstArr === -1 || firstObj < firstArr)) {
+                startIndex = firstObj;
+                isArray = false;
+            } else if (firstArr !== -1) {
+                startIndex = firstArr;
+                isArray = true;
             }
-            
-            // FALLBACK: Wenn kein JSON gefunden wurde, versuchen wir das Textformat zu parsen:
-            // **Positive Prompt:** [content]
-            // **Negative Prompt:** [content]
+
+            const endIndex = isArray ? cleanStr.lastIndexOf(']') : cleanStr.lastIndexOf('}');
+
+            if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+                let candidate = cleanStr.substring(startIndex, endIndex + 1);
+                
+                // Direkter Parse-Versuch
+                try {
+                    return JSON.parse(candidate);
+                } catch (e1) {
+                    // Sanitize trailing commas and control characters
+                    let sanitized = candidate
+                        .replace(/,\s*([}\]])/g, '$1')
+                        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+                    try {
+                        return JSON.parse(sanitized);
+                    } catch (e2) {
+                        // Letzter Rettungsversuch: Quotes reparieren
+                    }
+                }
+            }
+
+            // FALLBACK: Wenn kein Standard-JSON gefunden wurde, versuchen wir das Textformat zu parsen
             const posMatch = str.match(/\*\*Positive Prompt:\*\*([\s\S]*?)(?=\*\*Negative Prompt:\*\*|$)/i);
             const negMatch = str.match(/\*\*Negative Prompt:\*\*([\s\S]*?)$/i);
-            
+
             if (posMatch) {
                 const positive = posMatch[1].trim();
                 const negative = negMatch ? negMatch[1].trim() : "deformed, bad anatomy, disfigured, poorly drawn face, mutated, extra limbs, low quality, blurry";
@@ -54,23 +79,13 @@
                     "prompts": {
                         "positive_prompt": positive,
                         "negative_prompt": negative
-                    },
-                    "generation_parameters": {
-                        "aspect_ratio": "16:9",
-                        "suggested_width": 1024,
-                        "suggested_height": 1024,
-                        "cfg_scale": 7.0,
-                        "steps": 30,
-                        "sampler_name": "DPM++ 2M Karras"
                     }
                 };
             }
-            
-            throw new Error("Keine JSON-Struktur oder valides Textformat gefunden");
-        } catch (e) {
-            console.error("JSON Parsing Error:", e, str);
-            throw new Error("Das lokale Modell hat ein ungültiges Format generiert. Bitte erneut versuchen. Details: " + e.message);
+        } catch (err) {
+            console.error("extractJSON parse error:", err);
         }
+        return null;
     }
 
     const HARDCODED_URL = 'http://localhost:1234/v1';
@@ -3329,7 +3344,13 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         const aspectEl = document.getElementById('autobot_aspect');
         const charEl = document.getElementById('autobot_character');
 
-        if (type === 'cyberpunk') {
+        if (type === 'hook10') {
+            if (conceptEl) conceptEl.value = "Ein Barista gießt heißen Espresso über cremiges Vanilleeis, Nahaufnahme des Schmelzens und Dampfens mit sofortigem Brand-Schriftzug und ASMR Knistern.";
+            if (durationEl) durationEl.value = "10";
+            if (genreEl) genreEl.value = "High-End Commercial";
+            if (aspectEl) aspectEl.value = "9:16";
+            if (charEl) charEl.value = "@Barista_Alex, professioneller Barista mit schwarzer Leinenschürze";
+        } else if (type === 'cyberpunk') {
             if (conceptEl) conceptEl.value = "Eine Streetwear-Athletin rennt bei Nacht durch die regenfeuchten Straßen von Neontokio. Neonreklamen spiegeln sich in den Pfützen, während eine FPV-Drohne sie eng verfolgt.";
             if (durationEl) durationEl.value = "20";
             if (genreEl) genreEl.value = "Sci-Fi Cyberpunk";
@@ -3370,6 +3391,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         const pacing_style = document.getElementById('autobot_pacing')?.value || "balanced";
         const character = document.getElementById('autobot_character')?.value.trim() || "";
         const model = document.getElementById('autobot_model')?.value || "gemini-3.5-flash";
+        const language = document.getElementById('autobot_language')?.value || "de";
         const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
 
         const btn = document.getElementById('btnRunAutoBotStoryboard');
@@ -3399,6 +3421,9 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                     pacing_style: pacing_style,
                     character: character,
                     model: model,
+                    language: language,
+                    export_format: "google_flow",
+                    strict_camera_rig: true,
                     lm_url: lmUrl
                 })
             });
@@ -3437,9 +3462,13 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                                 statusSpan.innerText = 'Abgeschlossen (Raw)';
                                 statusSpan.style.color = 'var(--accent)';
                                 const parsed = extractJSON(payload.raw);
-                                lastGeneratedStoryboard = parsed;
-                                renderStoryboardOutput(parsed);
-                                showToast("Storyboard generiert!");
+                                if (parsed) {
+                                    lastGeneratedStoryboard = parsed;
+                                    renderStoryboardOutput(parsed);
+                                    showToast("Storyboard generiert!");
+                                } else {
+                                    showToast("Konnte Storyboard-JSON nicht parsen.", true);
+                                }
                             } else if (payload.event === 'error') {
                                 statusSpan.innerText = 'Fehler';
                                 statusSpan.style.color = '#ef4444';
@@ -3464,6 +3493,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
     };
 
     function renderStoryboardOutput(data) {
+        if (!data) return;
         const emptyState = document.getElementById('storyboard-empty-state');
         const resultsWrapper = document.getElementById('storyboard-results-wrapper');
         const titleEl = document.getElementById('sb-title');
@@ -3489,10 +3519,11 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         if (metaPacing) metaPacing.innerText = meta.pacing_profile || "Balanced";
         if (metaRatio) metaRatio.innerText = meta.aspect_ratio || "16:9";
 
-        // Render BigPicture Master Scene T2I Prompt
-        if (meta.master_scene_t2i_prompt && masterSceneCard && masterScenePromptEl) {
+        // Render BigPicture Master Scene / Contact Sheet Prompt
+        const contactSheetPrompt = meta.master_contact_sheet_prompt || meta.master_scene_t2i_prompt;
+        if (contactSheetPrompt && masterSceneCard && masterScenePromptEl) {
             masterSceneCard.style.display = 'block';
-            masterScenePromptEl.innerText = meta.master_scene_t2i_prompt;
+            masterScenePromptEl.innerText = contactSheetPrompt;
         } else if (masterSceneCard) {
             masterSceneCard.style.display = 'none';
         }
@@ -3514,29 +3545,62 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                 shotCard.className = 'card';
                 shotCard.style.borderLeft = '4px solid var(--primary)';
                 shotCard.style.position = 'relative';
+                shotCard.style.background = 'rgba(15, 23, 42, 0.6)';
 
                 const keyframePrompt = shot.keyframe_image_prompt || shot.veo_8_part_prompt || shot.prompt || "";
                 const i2vPrompt = shot.i2v_motion_prompt || shot.veo_8_part_prompt || "";
-                const fallbackPrompt = shot.veo_8_part_prompt || "";
+                const cameraRig = shot.camera_rig || {};
+                const cameraMotion = shot.camera_motion || "Cinematic Movement";
+                const lighting = shot.lighting || "Volumetric cinematic lighting";
+                const dialogue = shot.dialogue || null;
+
+                const rigStr = [cameraRig.camera, cameraRig.focal_length, cameraRig.lens, cameraRig.aperture].filter(Boolean).join(' • ') || 'Arri Alexa Mini LF • 35mm Anamorphic • T2.0';
 
                 shotCard.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:8px;">
-                        <span style="font-weight:bold; color:var(--accent); font-size:1rem;">
-                            🎬 Shot ${shot.shot_number || index + 1} (${shot.duration_seconds || 8}s)
+                    <!-- SHOT HEADER -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-color); padding-bottom:8px; flex-wrap:wrap; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-weight:bold; color:var(--accent); font-size:1.05rem;">
+                                🎬 Shot ${shot.shot_number || index + 1} (${shot.duration_seconds || 5}s)
+                            </span>
+                            <span style="background:rgba(79,70,229,0.2); color:var(--primary); padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">
+                                ${shot.framing || 'Medium Shot'}
+                            </span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-primary" onclick="transferShotToVeoStudio(${index})" style="padding:4px 10px; font-size:0.75rem; font-weight:bold;">
+                                <i class="fa-solid fa-film"></i> 🎬 In Veo Pro Studio laden
+                            </button>
+                            <button class="btn btn-secondary" onclick="transferShotToCamDirector(${index})" style="padding:4px 10px; font-size:0.75rem;">
+                                <i class="fa-solid fa-video"></i> 🎥 In Camera Director
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CAMERA RIG & LIGHTING BADGES -->
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <span style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:3px 8px; border-radius:4px; color:#38bdf8;">
+                            📹 <strong>Rig:</strong> ${rigStr}
                         </span>
-                        <span style="background:rgba(79,70,229,0.2); color:var(--primary); padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">
-                            ${shot.framing || 'Medium Shot'}
+                        <span style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:3px 8px; border-radius:4px; color:#f59e0b;">
+                            💡 <strong>Light:</strong> ${lighting}
+                        </span>
+                        <span style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:3px 8px; border-radius:4px; color:#a78bfa;">
+                            🎥 <strong>Motion:</strong> ${cameraMotion}
                         </span>
                     </div>
 
-                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px; display:flex; gap:12px; flex-wrap:wrap;">
-                        <div><strong>Kamera:</strong> ${shot.camera_motion || 'Static'}</div>
-                        <div><strong>In/Out:</strong> ${shot.transition_in || 'Standard'} ➔ ${shot.transition_out || 'Cut'}</div>
-                    </div>
+                    ${dialogue && dialogue.line ? `
+                    <!-- DIALOGUE BADGE -->
+                    <div style="background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.3); padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:0.82rem;">
+                        <strong style="color:var(--success);"><i class="fa-regular fa-comment-dots"></i> ${dialogue.speaker || 'Charakter'}:</strong> 
+                        <span style="color:#f8fafc; font-style:italic;">"${dialogue.line}"</span>
+                        <span style="font-size:0.7rem; color:var(--text-muted); margin-left:8px; text-transform:uppercase;">[${dialogue.language || 'de'}]</span>
+                    </div>` : ''}
 
                     <!-- STEP 1: KEYFRAME PROMPT -->
-                    <div style="background:var(--bg-input); padding:10px; border-radius:6px; border:1px solid var(--primary); margin-bottom:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <div style="background:var(--bg-input); padding:10px 12px; border-radius:6px; border:1px solid var(--primary); margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                             <span style="font-size:0.75rem; color:var(--primary); font-weight:bold;">🖼️ SCHRITT 1: TEXT-TO-IMAGE KEYFRAME PROMPT (Nano Banana / Midjourney)</span>
                             <button class="btn btn-secondary" onclick="copyShotSubPrompt('keyframe-${index}')" style="padding:2px 8px; font-size:0.7rem;">
                                 <i class="fa-regular fa-copy"></i> Keyframe Kopieren
@@ -3546,8 +3610,8 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                     </div>
 
                     <!-- STEP 2: IMAGE-TO-VIDEO ANIMATION PROMPT -->
-                    <div style="background:var(--bg-input); padding:10px; border-radius:6px; border:1px solid var(--accent); margin-bottom:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <div style="background:var(--bg-input); padding:10px 12px; border-radius:6px; border:1px solid var(--accent); margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                             <span style="font-size:0.75rem; color:var(--accent); font-weight:bold;">📽️ SCHRITT 2: IMAGE-TO-VIDEO ANIMATION PROMPT (Veo 3.1 / Runway / Luma)</span>
                             <button class="btn btn-secondary" onclick="copyShotSubPrompt('i2v-${index}')" style="padding:2px 8px; font-size:0.7rem;">
                                 <i class="fa-regular fa-copy"></i> Motion-Prompt Kopieren
@@ -3557,8 +3621,13 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                     </div>
 
                     ${shot.audio_cues ? `
-                    <div style="font-size:0.78rem; color:var(--text-muted); background:rgba(0,0,0,0.15); padding:6px 10px; border-radius:4px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted); background:rgba(0,0,0,0.2); padding:6px 10px; border-radius:4px; margin-bottom:4px;">
                         🔊 <strong>Audio & Lipsync:</strong> ${shot.audio_cues}
+                    </div>` : ''}
+
+                    ${shot.director_notes ? `
+                    <div style="font-size:0.75rem; color:#94a3b8; padding:4px 10px; font-style:italic;">
+                        🎬 <strong>Regie-Hinweis:</strong> ${shot.director_notes}
                     </div>` : ''}
                 `;
                 shotsContainer.appendChild(shotCard);
@@ -3566,11 +3635,103 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         }
     }
 
+    // Transfer Shot directly into Veo 3.1 Pro Studio
+    window.transferShotToVeoStudio = function(shotIndex) {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || !lastGeneratedStoryboard.shots[shotIndex]) {
+            showToast("Kein Shot gefunden!", true);
+            return;
+        }
+        const shot = lastGeneratedStoryboard.shots[shotIndex];
+        const meta = lastGeneratedStoryboard.storyboard_meta || {};
+        const charBible = Array.isArray(lastGeneratedStoryboard.character_bible) ? lastGeneratedStoryboard.character_bible[0] : (lastGeneratedStoryboard.character_bible || {});
+
+        const subjectEl = document.getElementById('veo_subject');
+        const actionEl = document.getElementById('veo_action');
+        const fxEl = document.getElementById('veo_fx');
+        const settingEl = document.getElementById('veo_setting');
+        const cameraEl = document.getElementById('veo_camera');
+        const soundEl = document.getElementById('veo_sound');
+
+        let subjectStr = shot.dialogue?.speaker || charBible.avatar_tag || charBible.name || "Hauptmotiv";
+        if (charBible.master_prompt_string) {
+            subjectStr += ` (${charBible.master_prompt_string})`;
+        }
+
+        if (subjectEl) subjectEl.value = subjectStr;
+        if (actionEl) actionEl.value = shot.i2v_motion_prompt || shot.subject_motion || "Dynamische Bewegung";
+        if (fxEl) fxEl.value = shot.lighting || "Volumetrisches Licht, Partikel";
+        if (settingEl) settingEl.value = `${shot.framing || 'Medium Shot'}, ${meta.genre || 'Cinematic'}`;
+        if (cameraEl) {
+            const rigStr = shot.camera_rig ? `${shot.camera_rig.camera || ''} ${shot.camera_rig.focal_length || ''}` : '';
+            cameraEl.value = `${shot.camera_motion || 'Cinematic Camera'}${rigStr ? ' (' + rigStr + ')' : ''}`;
+        }
+        if (soundEl) soundEl.value = shot.audio_cues || (shot.dialogue ? `Dialog: "${shot.dialogue.line}"` : "Cinematic Sound Design");
+
+        // Set mode to I2V
+        const modeSelect = document.getElementById('veoModeSelect');
+        if (modeSelect) {
+            modeSelect.value = 'i2v';
+            if (typeof window.updateVeoModeHighlight === 'function') window.updateVeoModeHighlight();
+        }
+
+        // Switch to Cinema -> Veo Studio Tab
+        if (typeof window.switchTab === 'function') window.switchTab('cinema');
+        if (typeof window.switchCineSub === 'function') window.switchCineSub('veo-studio');
+
+        showToast(`🎬 Shot ${shot.shot_number || (shotIndex + 1)} in Veo 3.1 Pro Studio übertragen! (I2V Modus aktiv) ✨`);
+    };
+
+    // Transfer Shot into AI Camera Director
+    window.transferShotToCamDirector = function(shotIndex) {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || !lastGeneratedStoryboard.shots[shotIndex]) {
+            showToast("Kein Shot gefunden!", true);
+            return;
+        }
+        const shot = lastGeneratedStoryboard.shots[shotIndex];
+
+        const builderSubject = document.getElementById('builder-subject');
+        if (builderSubject) {
+            builderSubject.value = `${shot.framing || 'Cinematic Shot'}: ${shot.keyframe_image_prompt || shot.camera_motion || ''}`;
+        }
+
+        if (typeof window.switchTab === 'function') window.switchTab('cinema');
+        if (typeof window.switchCineSub === 'function') window.switchCineSub('camera-director');
+
+        if (window.cameraPrompts && Array.isArray(window.cameraPrompts)) {
+            const motionLower = (shot.camera_motion || '').toLowerCase();
+            let match = window.cameraPrompts.find(p => motionLower.includes(p.id) || motionLower.includes(p.anim) || motionLower.includes(p.title.toLowerCase()));
+            if (!match && motionLower.includes('dolly')) match = window.cameraPrompts.find(p => p.id.includes('dolly'));
+            if (!match && motionLower.includes('pan')) match = window.cameraPrompts.find(p => p.id.includes('pan'));
+            if (!match && motionLower.includes('handheld')) match = window.cameraPrompts.find(p => p.id.includes('handheld'));
+            if (!match && motionLower.includes('crane')) match = window.cameraPrompts.find(p => p.id.includes('crane'));
+
+            if (match) {
+                window.camDirSelectedMovementId = match.id;
+                const moveCard = document.getElementById("selected-movement-card");
+                if (moveCard) {
+                    moveCard.innerHTML = `
+                        <div style="display:flex; justify-content:space-between;">
+                            <div>
+                                <h4 style="margin:0 0 5px 0; color:var(--text-main); font-size:0.9rem;">${match.title}</h4>
+                                <p style="margin:0; font-size:0.75rem; color:var(--text-muted);">${match.prompt}</p>
+                            </div>
+                            <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="window.clearCamDirMovement(event)"></i>
+                        </div>
+                    `;
+                }
+                if (typeof window.renderCamDirectorPrompts === 'function') window.renderCamDirectorPrompts();
+                if (typeof window.updateCamDirBuilder === 'function') window.updateCamDirBuilder();
+            }
+        }
+
+        showToast(`🎥 Shot ${shot.shot_number || (shotIndex + 1)} in AI Camera Director geöffnet! ✨`);
+    };
+
     window.copyMasterScenePrompt = function() {
         const el = document.getElementById('sb-master-scene-prompt');
         if (!el || !el.innerText) return;
         navigator.clipboard.writeText(el.innerText).then(() => {
-            showToast("🖼️ BigPicture Master-Scene Prompt kopiert! 📋✨");
+            showToast("🖼️ Contact Sheet Grid Prompt kopiert! 📋✨");
         }).catch(err => {
             showToast("Fehler beim Kopieren", true);
         });
@@ -3596,14 +3757,33 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         });
     };
 
+    window.copyAllI2vPrompts = function() {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots) {
+            showToast("Kein Storyboard vorhanden!", true);
+            return;
+        }
+        const text = lastGeneratedStoryboard.shots.map((s, idx) => `=== SHOT ${s.shot_number || (idx + 1)} (${s.duration_seconds || 5}s - ${s.framing || 'Medium Shot'}) ===\n${s.i2v_motion_prompt || s.veo_8_part_prompt || s.prompt}`).join("\n\n");
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("📽️ Alle I2V-Prompts in die Zwischenablage kopiert! 📋✨");
+        });
+    };
+
     window.copyAllStoryboardPrompts = function() {
         if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots) {
             showToast("Kein Storyboard vorhanden!", true);
             return;
         }
-        const text = lastGeneratedStoryboard.shots.map((s, idx) => `--- SHOT ${idx + 1} (${s.duration_seconds || 8}s) ---\n${s.veo_8_part_prompt || s.prompt}`).join("\n\n");
+        const text = lastGeneratedStoryboard.shots.map((s, idx) => {
+            const num = s.shot_number || (idx + 1);
+            const dur = s.duration_seconds || 5;
+            const framing = s.framing || 'Medium Shot';
+            const keyframe = s.keyframe_image_prompt || '';
+            const i2v = s.i2v_motion_prompt || '';
+            return `🎬 SHOT ${num} (${dur}s - ${framing})\n[1. T2I KEYFRAME]\n${keyframe}\n\n[2. I2V MOTION]\n${i2v}`;
+        }).join("\n\n-----------------------------------------\n\n");
+
         navigator.clipboard.writeText(text).then(() => {
-            showToast("Alle Shots in die Zwischenablage kopiert! 📋✨");
+            showToast("Alle Storyboard Shots in die Zwischenablage kopiert! 📋✨");
         });
     };
 

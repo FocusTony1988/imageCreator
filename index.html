@@ -1242,12 +1242,12 @@
         </section>
 
         <!-- ========================================================================= -->
-        <!-- MODULE: AUTOBOT VIDEO STORYBOARD ENGINE (20s - 2 MIN)                     -->
+        <!-- MODULE: AUTOBOT VIDEO STORYBOARD ENGINE (10s - 2 MIN)                     -->
         <!-- ========================================================================= -->
         <section id="autobot" class="tab-content">
             <div class="header">
                 <div>
-                    <h1>🎬 Veo 3.1 Storyboard AutoBot <span style="font-size:0.5em; background:linear-gradient(135deg, var(--primary), var(--accent)); padding:3px 10px; border-radius:6px; vertical-align:middle; margin-left:10px; color:#fff; font-weight:bold;">20s bis 2 MINUTEN</span></h1>
+                    <h1>🎬 Veo 3.1 Storyboard AutoBot <span style="font-size:0.5em; background:linear-gradient(135deg, var(--primary), var(--accent)); padding:3px 10px; border-radius:6px; vertical-align:middle; margin-left:10px; color:#fff; font-weight:bold;">10s bis 2 MINUTEN</span></h1>
                     <p>Vollautomatisierte Erstellung konsistenter KI-Video-Storyboards für Google Flow & Veo 3.1 nach dem 8-Komponenten Standard.</p>
                 </div>
             </div>
@@ -1264,6 +1264,7 @@
                         <!-- Presets / Quick Chips -->
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;">
                             <span style="font-size:0.75rem; color:var(--text-muted); align-self:center; font-weight:600;">Schnell-Beispiele:</span>
+                            <button class="style-btn" onclick="loadAutoBotPreset('hook10')">⚡ Micro-Hook Ad (10s)</button>
                             <button class="style-btn" onclick="loadAutoBotPreset('cyberpunk')">🌃 Cyberpunk Tokio (20s)</button>
                             <button class="style-btn" onclick="loadAutoBotPreset('perfume')">✨ Luxus-Werbespot (30s)</button>
                             <button class="style-btn" onclick="loadAutoBotPreset('scifi')">🚀 Sci-Fi Entdeckung (60s)</button>
@@ -1279,12 +1280,14 @@
                             <div class="form-group">
                                 <label for="autobot_duration"><strong>Ziel-Videolänge:</strong></label>
                                 <select id="autobot_duration" style="width:100%;">
-                                    <option value="20">20 Sekunden (3 Shots - Action/Hook)</option>
-                                    <option value="30" selected>30 Sekunden (4 Shots - Teaser/Story)</option>
-                                    <option value="45">45 Sekunden (6 Shots - Narrative Commercial)</option>
-                                    <option value="60">60 Sekunden / 1 Min (8 Shots - Kurz-Doku)</option>
-                                    <option value="90">90 Sekunden (11 Shots - Multi-Scene)</option>
-                                    <option value="120">120 Sekunden / 2 Min (15 Shots - Epi Kurzfilm)</option>
+                                    <option value="10">10 Sekunden (2 Shots - Ultra-Fast Ad / Social Hook)</option>
+                                    <option value="15">15 Sekunden (2-3 Shots - Dynamic Commercial)</option>
+                                    <option value="20">20 Sekunden (3-4 Shots - Action/Hook)</option>
+                                    <option value="30" selected>30 Sekunden (4-6 Shots - Teaser/Story)</option>
+                                    <option value="45">45 Sekunden (6-8 Shots - Narrative Commercial)</option>
+                                    <option value="60">60 Sekunden / 1 Min (8-10 Shots - Kurz-Doku)</option>
+                                    <option value="90">90 Sekunden (11-14 Shots - Multi-Scene)</option>
+                                    <option value="120">120 Sekunden / 2 Min (15-20 Shots - Epi Kurzfilm)</option>
                                 </select>
                             </div>
 
