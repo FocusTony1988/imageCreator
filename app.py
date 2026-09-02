@@ -35,7 +35,7 @@ GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai/"
 PACING_DELAY = int(os.environ.get("PACING_DELAY", "3"))
 
 # Initialize separate clients for Gemini and local LM Studio
-gemini_client = OpenAI(api_key=GEMINI_API_KEY, base_url=GEMINI_BASE)
+gemini_client = OpenAI(api_key=GEMINI_API_KEY, base_url=GEMINI_BASE, timeout=60.0)
 
 def get_lm_studio_model(lm_studio_base):
     """Helper to dynamically fetch the model currently loaded in LM Studio."""
@@ -169,18 +169,24 @@ def optimize_goal():
 @app.route('/api/autobot/storyboard', methods=['POST'])
 @app.route('/api/autobot/storyboard', methods=['POST'])
 def generate_autobot_storyboard():
-    data = request.json
+    data = request.json or {}
     concept = data.get('concept', '')
     duration = int(data.get('duration', 30))
     aspect_ratio = data.get('aspect_ratio', '16:9')
-    genre = data.get('genre', 'Hollywood Drama')
+    genre = data.get('genre', 'Hollywood Storytelling')
     pacing_style = data.get('pacing_style', 'balanced')
     character_info = data.get('character', '')
     model = data.get('model', 'gemini-3.5-flash')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+    language = data.get('language', 'de')
+    export_format = data.get('export_format', 'google_flow')
+    strict_camera_rig = data.get('strict_camera_rig', True)
 
     if not concept:
         return jsonify({"error": "Bitte gib ein Konzept oder eine Video-Idee ein."}), 400
+
+    # Clean aspect ratio parameter for Midjourney / Nano Banana
+    ar_tag = f"--ar {aspect_ratio}" if not aspect_ratio.startswith('--ar') else aspect_ratio
 
     def event_stream():
         # Helper to call AI and yield logs during retries
@@ -199,17 +205,17 @@ def generate_autobot_storyboard():
         yield f"data: {json.dumps({'event': 'log', 'message': '🚀 AutoBot Multi-Agent Board gestartet: Ingestion & Pacing...'})}\n\n"
         
         if pacing_style == 'fast':
-            pacing_desc = "Fast & Punchy (Schnelle Schnitte 3s-5s für maximale Dynamik / Reels / Commercials)"
+            pacing_desc = "Fast & Punchy (Schnelle Schnitte 3s-5s für maximale Dynamik / Commercials)"
             target_avg_shot = 4
         elif pacing_style == 'atmospheric':
-            pacing_desc = "Slow Atmospheric (Ruhige, getragene Kamerafahrten 7s-8s / Doku / Drama)"
-            target_avg_shot = 8
+            pacing_desc = "Slow Atmospheric (Ruhige, getragene Kamerafahrten 6s-8s / Doku / Drama)"
+            target_avg_shot = 7
         else:
-            pacing_desc = "Cinematic Balanced (Dynamischer Rhythmus-Wechsel zwischen 4s, 6s & 8s)"
-            target_avg_shot = 6
+            pacing_desc = "Cinematic Balanced (Dynamischer Rhythmus-Wechsel zwischen 3s, 4s, 5s, 6s & 8s)"
+            target_avg_shot = 5
 
         estimated_shots = max(2, round(duration / target_avg_shot))
-        yield f"data: {json.dumps({'event': 'log', 'message': f'🎬 Ziel-Dauer: {duration}s -> Pacing: {pacing_desc} (~{estimated_shots} Shots)'})}\n\n"
+        yield f"data: {json.dumps({'event': 'log', 'message': f'🎬 Ziel-Dauer: {duration}s -> Pacing: {pacing_desc} (~{estimated_shots} Shots | Format: {export_format.upper()} | Sprache: {language.upper()})'})}\n\n"
 
         # ---------------------------------------------------------
         # STAGE 2: 4 SPECIALIZED EXPERT AGENTS ASSEMBLY
@@ -234,14 +240,15 @@ def generate_autobot_storyboard():
         draft_prompt = f"""Erstelle ein erstes Storyboard-Konzept für ein KI-Video mit {duration}s Länge.
 Konzept: {concept}
 Genre: {genre}
-Seitenverhältnis: {aspect_ratio}
+Seitenverhältnis: {aspect_ratio} ({ar_tag})
 Charakter-Info: {character_info}
 Pacing: {pacing_desc}
+Dialogsprache: {language}
 
-Strukturiere das Konzept vorab in {estimated_shots} Shots mit Idee, Kameraführung, Charakterdarstellung und Übergängen."""
+Strukturiere das Konzept vorab in ca. {estimated_shots} Shots mit Idee, Kameraführung (Camera Director Vektoren), Optik, Beleuchtung, Dialogen und nahtlosen Übergängen."""
 
         draft_res = None
-        for ev_type, ev_val in call_ai([{"role": "system", "content": "Du bist ein erfahrener KI-Regisseur."}, {"role": "user", "content": draft_prompt}], temperature=0.6):
+        for ev_type, ev_val in call_ai([{"role": "system", "content": "Du bist ein erfahrener KI-Regisseur und Director of Photography."}, {"role": "user", "content": draft_prompt}], temperature=0.6):
             if ev_type == 'log':
                 yield ev_val
             elif ev_type == 'result':
@@ -262,13 +269,14 @@ Strukturiere das Konzept vorab in {estimated_shots} Shots mit Idee, Kameraführu
                 
             yield f"data: {json.dumps({'event': 'log', 'message': f'🕵️ Experte {i+1}/4 ({role}) prüft Entwurf auf Perfektion...'})}\n\n"
             
-            rev_sys = f"Du bist der {role} in einem High-End Filmproduktions-Board."
+            rev_sys = f"Du bist der {role} in einem High-End Filmproduktions-Board für Veo 3.1, Google Flow und Nano Banana."
             rev_user = f"""Prüfe folgenden Entwurf für ein {duration}s KI-Video ({genre}):
 {draft_res}
 
 Finde aus der Sicht deiner Fachrolle ({role}) die 2-3 wichtigsten Optimierungspunkte bezüglich:
-1. Ist die Optik/Kamera/Brennweite (bzw. Beleuchtung oder Konsistenz) perfekt auf Veo 3.1 & Nano Banana abgestimmt?
-2. Ist das Pacing (Shot-Längen 3s-8s) dynamisch genug?
+1. Optik/Kamera/Brennweite (z. B. Arri Alexa, Anamorphic Lenses, Brennweite in mm, T-Stop) und Beleuchtung (Kelvin-Farbtemperatur).
+2. Pacing (Shot-Längen 3s-8s) und dynamische Vektorbewegungen (Camera Director Trajektorien).
+3. Konsistente @Avatar-Tags und Dialoge (Sprache: {language}).
 Liefere kurze, präzise Anweisungen in Stichpunkten."""
 
             rev_text = None
@@ -285,7 +293,7 @@ Liefere kurze, präzise Anweisungen in Stichpunkten."""
         reviews_str = "\n\n".join(reviews)
 
         # ---------------------------------------------------------
-        # STAGE 5: MASTER SYNTHESIS (FINAL 8-PART JSON STORYBOARD)
+        # STAGE 5: MASTER SYNTHESIS (FINAL STRICT JSON STORYBOARD)
         # ---------------------------------------------------------
         if PACING_DELAY > 0:
             time.sleep(PACING_DELAY)
@@ -293,21 +301,40 @@ Liefere kurze, präzise Anweisungen in Stichpunkten."""
         yield f"data: {json.dumps({'event': 'log', 'message': '🏗️ Prompt Architect fusioniert das Feedback aller 4 Agenten in das finale Storyboard JSON...'})}\n\n"
 
         final_system_prompt = f"""Du bist der weltweit führende AI Video Executive Director & Prompt Architect für Google Flow & Veo 3.1.
-Deine Aufgabe ist es, aus dem Erstentwurf und dem kritischen Feedback des 4-Agenten-Gremiums ein PERFEKTES, bezugfertiges Video-Storyboard JSON für einen KI-Kurzfilm ({duration}s) zu synthetisieren.
+Deine Aufgabe ist es, aus dem Erstentwurf und dem Experten-Feedback ein PERFEKTES, konsistentes Video-Storyboard JSON für einen KI-Kurzfilm ({duration}s Gesamtlänge) zu synthetisieren.
 
 FEEDBACK DER 4 EXPERTEN:
 {reviews_str}
 
-WICHTIGE PACING & REGIE-VORGABEN (Whitepaper Abs. 5.1 & 6.1):
-1. **DYNAMISCHE SHOT-LÄNGEN**: Verteile die Längen der Shots variabel (3s, 4s, 5s, 6s, 7s, 8s), sodass die Gesamtsumme EXAKT {duration} Sekunden ergibt!
-2. **DUAL PIPELINE (T2I Keyframe + I2V Motion)**:
-   - keyframe_image_prompt: Vollständiger Text-to-Image Prompt für Midjourney / Nano Banana (Kamera, Linse, Subsurface Scattering, Beleuchtung, Farbabgleich).
-   - i2v_motion_prompt: Image-to-Video Animation Prompt für Veo 3.1 / Runway / Luma (NUR Camera Movement, Subject Motion, Environment Physics, Audio/Lipsync).
-3. **8-KOMPONENTEN HIERARCHIE**: [Cinematography], [Subject], [Action], [Environment], [Lighting & Style], [Audio], [Temporal], [Technical].
-4. **FORMAT**: {aspect_ratio} | **GENRE**: {genre}.
+STRIKTE REGIE- & SCHEMA-REGELN:
+1. **DYNAMISCHES PACING**: Die Summe aller `duration_seconds` MUSS EXAKT {duration} Sekunden ergeben (Shots zwischen 3s und 8s)!
+2. **SHOT NUMMERIERUNG**: `shot_number` MUSS ein fortlaufender Integer sein (1, 2, 3, 4...). KEINE Split-Nummern (wie 4a/4b).
+3. **CAMERA RIG & OPTIK**: Jedes Shot-Objekt MUSS ein `camera_rig` Objekt enthalten mit:
+   - "camera": "Arri Alexa Mini LF" | "RED V-Raptor" | "Sony Venice 2" | "IMAX 70mm"
+   - "lens": "Anamorphic Prime" | "Master Prime" | "Vintage Cooke Speed Panchro"
+   - "focal_length": "24mm" | "35mm" | "50mm" | "75mm" | "85mm" | "100mm"
+   - "aperture": "T1.4" | "T2.0" | "T2.8" | "T4.0"
+4. **CAMERA DIRECTOR MOTION**: `camera_motion` verwendet exakte Vektor-Bewegungen (z. B. "Slow horizontal dolly pan left to right with parallax", "Organic handheld micro-jitter", "Slow vertical crane jib up", "FPV drone fast dive", "Tracking follow shot with dynamic foreground occlusion").
+5. **BELEUCHTUNG & KELVIN**: `lighting` nennt präzise Farbtemperaturen (z. B. "3200K warm tungsten key light vs. 5600K cool blue ambient window light, volumetric rim lighting").
+6. **DUAL PIPELINE PROMPTS**:
+   - `keyframe_image_prompt` (T2I für Nano Banana / Midjourney): Vollständiger Prompt mit @Avatar-Tags, Kleidung, Setting, Camera Rig, Kelvin-Licht und {ar_tag}.
+   - `i2v_motion_prompt` (I2V für Veo 3.1 / Runway): Strikt gegliedert:
+     "Camera Movement: [Exakter Befehl aus camera_motion]. Subject Motion: [Physische Motorik und Gestik ohne redundante Farbbeschreibungen]. Environment Physics: [Partikel, Reflexionen, Regen, Rauch, Lichtbrechung]. Sound Design: [Natürliche Atmo und Soundkulisse]. FPS & Motion: 24fps, fluid cinematic motion."
+7. **DIALOGUE**: `dialogue` ist ein Objekt mit: {{ "speaker": "@Avatar", "line": "Gesprochener Satz", "language": "{language}" }}.
+8. **CHARACTER BIBLE**: Array aller auftretenden Charaktere mit `avatar_tag`, `character_id`, `name`, `demographics`, `physical_appearance`, `wardrobe`, `master_prompt_string`.
+9. **AGENCY STORYBOARD PRESENTATION BOARD (MASTER PROMPT)**: 
+   `master_contact_sheet_prompt` MUSS ein vollständiger, extrem detailreicher Image-Prompt für Nano Banana / Midjourney sein, der ein **vollständiges Agency-Pitch-Deck Storyboard Poster** generiert (exakt wie ein professionelles Werbeagentur-Pitchboard):
+   - **Header oben**: Typografie-Header 'PREMIUM ADVERTISING AGENCY PRESENTATION: [TITEL]' mit 4 farbigen Meta-Pills ('Duration: {duration} Seconds', 'Style: {genre}', 'Focus: [Hauptmotiv/Produkt/@Avatar]', 'Audio: [Key Sound/Ambient]') und Infobox rechts 'Why This Style Works: [Visuelle Begründung]'.
+   - **Strukturiertes Szenen-Grid**: Sequenzielle Szenenkarten (Scene 1, Scene 2, Scene 3...). Jede Karte besitzt ein 'Scene X'-Badge oben links und ein rundes Zeit-Badge (z. B. '2s', '3s', '4s') oben rechts.
+   - **4 strukturierte Info-Zeilen unter JEDEM Szenenbild**:
+     - 'Camera:' [Winkel, z. B. Overhead / Macro close-up / Controlled push-in / Low angle hero shot]
+     - 'Visual:' [Optik, Beleuchtung, Texturen, Materialien]
+     - 'Action:' [Physische Bewegung im Bild]
+     - 'Key Detail / Focus:' [Dramaturgischer Fokus / Nutzenversprechen]
+   - **Gestaltung**: Heller, warmer Cream-Hintergrund, präzises Grafikdesign, gestochen scharfe Typografie, saubere Karten-Rahmen, 8k Commercial Advertising Quality {ar_tag}.
 
-Ausgabe-Format:
-Du MUSST deine Antwort AUSSCHLIESSLICH als valides JSON-Objekt zurückgeben (ohne Markdown-Backticks, ohne Freitext davor/danach):
+AUSGABE-FORMAT:
+Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Begrüßung, kein Fließtext):
 {{
   "storyboard_meta": {{
     "title": "Titel des Kurzfilms",
@@ -316,37 +343,47 @@ Du MUSST deine Antwort AUSSCHLIESSLICH als valides JSON-Objekt zurückgeben (ohn
     "total_duration_seconds": {duration},
     "total_shots": {estimated_shots},
     "aspect_ratio": "{aspect_ratio}",
-    "core_narrative": "Kurze Zusammenfassung der Handlung",
-    "master_scene_t2i_prompt": "Multi-Panel Film Storyboard Collage Prompt (Text-to-Image für Nano Banana / Midjourney): A professional cinematic film storyboard grid compilation, split screen contact sheet featuring 4 distinct sequential film frames from the story concept. Frame 1 (top left): wide establishing shot of environment. Frame 2 (top right): medium shot introducing @Hero_Name. Frame 3 (bottom left): dramatic action climax shot. Frame 4 (bottom right): cinematic close-up reaction with volumetric lighting. High resolution film contact sheet, fine 35mm grain, color graded cinematic palette, 8k raw concept art --ar {aspect_ratio.replace(':', '-') if ':' in aspect_ratio else '16-9'}"
+    "core_narrative": "Prägnante 2-3 Sätze Zusammenfassung der Handlung",
+    "master_contact_sheet_prompt": "A professional advertising agency presentation board, campaign pitch deck storyboard infographic for a cinematic commercial film. Header at top with bold typography 'PREMIUM ADVERTISING AGENCY PRESENTATION: [TITEL]', featuring 4 colored metadata badge pills: 'Duration: {duration} Seconds', 'Style: {genre}', 'Focus: [Key Subject/@Avatar]', 'Audio: [Main Sound]', and an analytical top-right info card 'Why This Style Works: [Psychological aesthetic rationale]'. Below is a clean, structured graphic design storyboard grid with sequential numbered scene cards. Each scene card has a top-left 'Scene X' badge and a top-right red duration circle badge '[Xs]'. Underneath each cinematic frame are 4 detailed typography caption lines: 'Camera: [Camera angle & lens]', 'Visual: [Lighting, texture, materials]', 'Action: [Dynamic movement]', 'Key Detail: [Story/product focus]'. Sequential scenes: Scene 1 ([X]s): [Wide establishing visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 2 ([X]s): [Medium subject visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 3 ([X]s): [Dynamic close-up visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 4 ([X]s): [Action climax visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 5 ([X]s): [Emotional reaction visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 6 ([X]s): [Cinematic final packshot/resolution], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Warm cream editorial presentation background, sharp graphic design layout, crisp typography, clean card borders, professional advertising photography, 8k resolution concept art {ar_tag}"
   }},
-  "character_bible": {{
-    "avatar_tag": "@Hero_Name",
-    "character_id": "CHAR_001",
-    "name": "Elena Vance",
-    "demographics": "34-year-old female engineer",
-    "physical_appearance": "athletic build, dark raven hair tied in a tight low bun, sharp emerald green eyes",
-    "wardrobe": "dark navy tactical jacket over matte black turtleneck",
-    "master_prompt_string": "Elena Vance, a 34-year-old female engineer, athletic build, dark raven hair in a tight low bun, sharp emerald green eyes, wearing dark navy tactical jacket"
-  }},
+  "character_bible": [
+    {{
+      "avatar_tag": "@Hero_Name",
+      "character_id": "CHAR_001",
+      "name": "Elena Vance",
+      "demographics": "34-year-old female engineer",
+      "physical_appearance": "athletic build, dark raven hair in a tight low bun, sharp emerald green eyes",
+      "wardrobe": "dark navy tactical jacket over matte black turtleneck",
+      "master_prompt_string": "Elena Vance, a 34-year-old female engineer, athletic build, dark raven hair in a tight low bun, sharp emerald green eyes, wearing dark navy tactical jacket"
+    }}
+  ],
   "shots": [
     {{
       "shot_number": 1,
       "duration_seconds": 4,
-      "framing": "Wide Shot / 24mm Lens",
-      "camera_motion": "Fast push-in tracking shot",
-      "transition_type": "Whip Pan Right Match Cut",
-      "is_extend_shot": false,
-      "keyframe_image_prompt": "Text-to-Image Prompt für Midjourney / Nano Banana: Wide establishing shot, 24mm wide angle lens, @Hero_Name standing in futuristic laboratory, 35mm film grain, volumetric cyan lighting, highly detailed 8k raw photo --ar {aspect_ratio.replace(':', '-') if ':' in aspect_ratio else '16-9'}",
-      "i2v_motion_prompt": "Image-to-Video Animation Prompt für Veo 3.1 / Runway / Luma: Camera Movement: Fast steady camera push-in towards subject. Subject Motion: @Hero_Name turns head quickly towards camera. Environment Physics: Dust motes drifting in volumetric cyan light rays. Audio: Muffled rain ambient, footsteps echoing. 24fps, fluid motion.",
-      "veo_8_part_prompt": "Vollständiger kombinations Text-to-Video Fallback Prompt nach 8-Komponenten Hierarchie",
-      "audio_cues": "Dialogue: \"System initialized.\" / Heavy rain ambient",
-      "director_notes": "Kurzer, dynamischer Hook (4 Sekunden). Ausgewogene Bewegung ohne Jitter."
+      "framing": "Wide Establishing Shot",
+      "camera_rig": {{
+        "camera": "Arri Alexa Mini LF",
+        "lens": "Anamorphic Prime",
+        "focal_length": "35mm",
+        "aperture": "T2.0"
+      }},
+      "camera_motion": "Slow horizontal dolly pan left to right with parallax",
+      "lighting": "3200K warm tungsten key light vs. 5600K cool blue ambient window light",
+      "keyframe_image_prompt": "Cinematic wide establishing shot, @Hero_Name standing in futuristic abandoned laboratory, wearing dark navy tactical jacket, Arri Alexa Mini LF, 35mm Anamorphic Prime lens, T2.0, 3200K warm tungsten key light vs 5600K cool ambient, volumetric dust motes, highly detailed 8k raw photo {ar_tag}",
+      "i2v_motion_prompt": "Camera Movement: Slow horizontal dolly pan left to right with smooth parallax. Subject Motion: @Hero_Name turns head slowly towards the light source, breathing gently. Environment Physics: Volumetric dust particles drifting in blue light rays, subtle steam rising. Sound Design: Low frequency hum of generator, distant water dripping, soft tactical footsteps. FPS & Motion: 24fps, fluid cinematic motion.",
+      "dialogue": {{
+        "speaker": "@Hero_Name",
+        "line": "Die Energiequelle reagiert noch.",
+        "language": "{language}"
+      }},
+      "audio_cues": "Dialogue: 'Die Energiequelle reagiert noch.' / Heavy atmospheric ambient",
+      "director_notes": "Dynamischer Einstiegs-Hook (4s). Ruhige Dolly-Fahrt für sofortigen Spannungsaufbau."
     }}
   ]
-}}
-"""
+}}"""
 
-        final_user_content = f"Konzept:\n{concept}\n\nBisheriger Entwurf:\n{draft_res}\n\nCharakter-Info:\n{character_info}"
+        final_user_content = f"Konzept:\n{concept}\n\nBisheriger Entwurf:\n{draft_res}\n\nCharakter-Info:\n{character_info}\n\nDialogsprache: {language}"
 
         yield f"data: {json.dumps({'event': 'log', 'message': '✨ Finalisiere Prompts, Transitions & Character Bible...'})}\n\n"
 
@@ -379,7 +416,11 @@ Du MUSST deine Antwort AUSSCHLIESSLICH als valides JSON-Objekt zurückgeben (ohn
             print(f"[Storyboard Error] JSON Parsing failed: {e}")
             yield f"data: {json.dumps({'event': 'final_storyboard_raw', 'raw': raw_res, 'message': 'Raw Output empfangen.'})}\n\n"
 
-    return Response(event_stream(), mimetype='text/event-stream')
+    response = Response(event_stream(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache, no-transform'
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Connection'] = 'keep-alive'
+    return response
 
 @app.route('/api/copilot', methods=['POST'])
 def run_copilot():
@@ -779,7 +820,11 @@ def generate_solution():
             
         yield f"data: {json.dumps({'event': 'final', 'content': final_concept, 'message': 'Workflow erfolgreich beendet!'})}\n\n"
         
-    return Response(event_stream(), mimetype='text/event-stream')
+    response = Response(event_stream(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache, no-transform'
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Connection'] = 'keep-alive'
+    return response
 
 @app.route('/api/watermark/remove', methods=['POST'])
 def remove_watermark():

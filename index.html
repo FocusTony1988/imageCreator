@@ -1320,6 +1320,14 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="autobot_language"><strong>Dialog & Audio Sprache:</strong></label>
+                                <select id="autobot_language" style="width:100%;">
+                                    <option value="de" selected>🇩🇪 Deutsch (German)</option>
+                                    <option value="en">🇬🇧 Englisch (English)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="autobot_model"><strong>KI Modell-Kette:</strong></label>
                                 <select id="autobot_model" style="width:100%;">
                                     <option value="gemini-3.5-flash" selected>Gemini 3.5 Flash ➔ 2.5 Flash Fallback (Empfohlen)</option>
@@ -1370,7 +1378,8 @@
                                     <p id="sb-narrative" style="font-size:0.85rem; color:var(--text-muted); margin:0;">Handlungskonzept...</p>
                                 </div>
                                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                    <button class="btn btn-secondary" onclick="copyAllStoryboardPrompts()" style="font-size:0.75rem;"><i class="fa-regular fa-copy"></i> Alle Prompts Kopieren</button>
+                                    <button class="btn btn-primary" onclick="copyAllI2vPrompts()" style="font-size:0.75rem;"><i class="fa-solid fa-film"></i> 📽️ Alle I2V Prompts</button>
+                                    <button class="btn btn-secondary" onclick="copyAllStoryboardPrompts()" style="font-size:0.75rem;"><i class="fa-regular fa-copy"></i> Alle Prompts</button>
                                     <button class="btn btn-secondary" onclick="copyStoryboardJson()" style="font-size:0.75rem;"><i class="fa-solid fa-code"></i> JSON Export</button>
                                 </div>
                             </div>
@@ -1383,18 +1392,18 @@
                             </div>
                         </div>
 
-                        <!-- BigPicture Master Scene Multi-Panel Grid Card -->
+                        <!-- Agency Master Storyboard Pitch Deck Card -->
                         <div class="card" id="sb-master-scene-card" style="border-color:#f59e0b; background:rgba(245,158,11,0.08); display:none;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <span style="font-weight:bold; color:#f59e0b; font-size:0.95rem;">
-                                    🖼️ BigPicture Multi-Panel Storyboard Grid Prompt (Nano Banana / Midjourney Collage)
+                                    🖼️ Agency Storyboard Master Presentation Sheet Prompt (Nano Banana / Midjourney)
                                 </span>
                                 <button class="btn btn-secondary" onclick="copyMasterScenePrompt()" style="padding:2px 8px; font-size:0.7rem;">
-                                    <i class="fa-regular fa-copy"></i> Storyboard-Grid Prompt Kopieren
+                                    <i class="fa-regular fa-copy"></i> Master Board Prompt Kopieren
                                 </button>
                             </div>
                             <p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 6px 0;">
-                                Generiere mit diesem Prompt ein <strong>4-Panel Contact Sheet / Storyboard-Grid Bild</strong> in Nano Banana oder Midjourney. Du erhältst alle Hauptszenen & den Charakter auf einen Blick in EINEM Gesamtbild für die perfekte Big-Picture Übersicht!
+                                Generiere mit diesem Prompt ein <strong>vollständiges Agency-Präsentations-Storyboard (Pitch Deck Poster)</strong> in Nano Banana oder Midjourney: Inklusive Titel-Header, Meta-Pills (Duration, Style, Focus, Audio), "Why This Style Works"-Box, nummerierten Szenen-Badges (Scene 1, 2...), Zeit-Badges (2s, 3s...) und den 4 detaillierten Zeilen (<strong>Camera, Visual, Action, Key Detail</strong>) unter jedem Panel!
                             </p>
                             <p id="sb-master-scene-prompt" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#fef3c7; background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; margin:0; white-space:pre-wrap; word-break:break-word; border:1px dashed #f59e0b;"></p>
                         </div>
