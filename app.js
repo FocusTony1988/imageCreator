@@ -21,6 +21,16 @@
         toast.innerText = msg;
         setTimeout(() => toast.style.display = 'none', 4500);
     }
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
     
     // Robuster JSON Extractor (Ignoriert Markdown, bereinigt Trailing-Commas & extrahiert Objekte/Arrays)
     function extractJSON(str) {
