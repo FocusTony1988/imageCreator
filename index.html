@@ -1272,11 +1272,19 @@
                         </div>
 
                         <div class="form-group" style="margin-bottom:15px;">
-                            <label for="autobot_concept"><strong>Kurzfilm-Idee / Storyboard Konzept:</strong></label>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                                <label for="autobot_concept" style="margin-bottom:0;"><strong>🎬 Kurzfilm-Idee / Storyboard Konzept:</strong></label>
+                                <button type="button" class="copilot-treatment-btn" id="btnAutoBotCopilot" onclick="runAutoBotDirectorCoPilot()" title="Co-Pilot analysiert die Idee, erstellt ein Regie-Treatment und stellt alle Parameter optimal ein">
+                                    <i class="fa-solid fa-brain"></i> 🧠 Regie-Co-Pilot & Treatment
+                                </button>
+                            </div>
                             <div style="position:relative;">
-                                <textarea id="autobot_concept" rows="4" placeholder="Z.B.: Eine Pizza Produktion - vom Teig über dem belegen - backen - bis zum servieren..." style="width:100%; border-radius:8px; padding:10px 85px 10px 10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.9rem;"></textarea>
+                                <textarea id="autobot_concept" rows="4" placeholder="Z.B.: Eine Pizza Produktion - vom Teig über dem belegen - backen - bis zum servieren... (Oder klicke auf '🧠 Regie-Co-Pilot', um eine Idee zu brainstormen!)" style="width:100%; border-radius:8px; padding:10px 85px 10px 10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.9rem;"></textarea>
                                 <button class="magic-polish-btn" id="btnPolishAutoBot" onclick="magicPolish('autobot_concept')" title="Idee in ein kinoreifes Video-Skript verwandeln" style="bottom:10px; right:10px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Polish</button>
                             </div>
+
+                            <!-- Interactive Director Treatment & Impact Preview Card -->
+                            <div id="autobot_treatment_card" style="display:none; margin-top:12px;"></div>
                         </div>
 
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">

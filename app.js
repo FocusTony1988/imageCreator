@@ -3355,9 +3355,169 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
     });
 
     /* =========================================
-       AUTOBOT STORYBOARD ENGINE
+       AUTOBOT STORYBOARD ENGINE & DIRECTOR CO-PILOT
        ========================================= */
     let lastGeneratedStoryboard = null;
+    window.lastAutoBotTreatment = null;
+
+    window.runAutoBotDirectorCoPilot = async function() {
+        const conceptEl = document.getElementById('autobot_concept');
+        const genreEl = document.getElementById('autobot_genre');
+        const aspectEl = document.getElementById('autobot_aspect');
+        const btn = document.getElementById('btnAutoBotCopilot');
+        const modelEl = document.getElementById('autobot_model');
+        const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
+
+        const rawIdea = conceptEl ? conceptEl.value.trim() : '';
+        const genre = genreEl ? genreEl.value : 'Hollywood Storytelling';
+        const ar = aspectEl ? aspectEl.value : '16:9';
+        const model = modelEl ? modelEl.value : 'gemini-3.5-flash-lite';
+
+        const originalBtnHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.innerHTML = '<span class="spinner" style="display:inline-block; width:12px; height:12px;"></span> Co-Pilot analysiert...';
+            btn.disabled = true;
+        }
+
+        showToast("🧠 Regie-Co-Pilot analysiert Konzept & entwirft Treatment mit Wirkungs-Vorschau...");
+
+        try {
+            const response = await fetch(BACKEND_API_URL + '/api/autobot/treatment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idea: rawIdea,
+                    genre: genre,
+                    aspect_ratio: ar,
+                    model: model,
+                    lm_url: lmUrl
+                })
+            });
+
+            if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
+            const resData = await response.json();
+
+            if (resData.status === 'success' && resData.treatment) {
+                window.lastAutoBotTreatment = resData.treatment;
+                renderAutoBotTreatment(resData.treatment);
+                showToast("✨ Regie-Treatment & Wirkungs-Vorschau erstellt!");
+            } else {
+                throw new Error(resData.message || "Fehler beim Erstellen des Treatments.");
+            }
+        } catch (e) {
+            console.error("Co-Pilot Treatment Error:", e);
+            showToast("Fehler beim Co-Pilot Treatment: " + e.message, true);
+        } finally {
+            if (btn) {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+            }
+        }
+    };
+
+    window.renderAutoBotTreatment = function(t) {
+        const container = document.getElementById('autobot_treatment_card');
+        if (!container || !t) return;
+
+        const cfg = t.recommended_config || {};
+        const dram = t.dramaturgy || {};
+
+        container.innerHTML = `
+            <div class="treatment-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--primary); font-weight:700;">🎬 Regie-Treatment & Dramaturgie</div>
+                        <h4 style="margin:2px 0 4px 0; color:#fff; font-size:1.1rem; font-weight:700;">${escapeHTML(t.title || 'Unbenanntes Projekt')}</h4>
+                        <div style="font-size:0.85rem; color:#cbd5e1; font-style:italic;">„${escapeHTML(t.logline || '')}“</div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('autobot_treatment_card').style.display='none'" style="background:none; border:none; color:#64748b; font-size:1rem; cursor:pointer; padding:4px;" title="Schließen">✖</button>
+                </div>
+
+                <!-- Expected Impact & Audience Reaction -->
+                <div style="background:rgba(99, 102, 241, 0.1); border-left:3px solid var(--primary); padding:10px 14px; border-radius:0 8px 8px 0; margin-bottom:12px;">
+                    <div style="font-size:0.75rem; font-weight:700; color:#c7d2fe; margin-bottom:3px; display:flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-bullseye"></i> Erwartetes Ergebnis & Wirkungs-Analyse:
+                    </div>
+                    <div style="font-size:0.82rem; line-height:1.45; color:#e2e8f0;">${escapeHTML(t.expected_impact || '')}</div>
+                </div>
+
+                <!-- 3-Phase Dramaturgy -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:12px;">
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px;">
+                        <div style="font-size:0.7rem; color:#38bdf8; font-weight:700;"><i class="fa-solid fa-play"></i> 1. Hook (0-2s)</div>
+                        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:2px;">${escapeHTML(dram.hook || '-')}</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px;">
+                        <div style="font-size:0.7rem; color:#f59e0b; font-weight:700;"><i class="fa-solid fa-chart-line"></i> 2. Steigerung</div>
+                        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:2px;">${escapeHTML(dram.development || '-')}</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px;">
+                        <div style="font-size:0.7rem; color:#ec4899; font-weight:700;"><i class="fa-solid fa-fire"></i> 3. Climax / Payoff</div>
+                        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:2px;">${escapeHTML(dram.payoff || '-')}</div>
+                    </div>
+                </div>
+
+                <!-- Recommended Parameter Pills -->
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+                    <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600;">Empfohlen:</span>
+                    <span class="treatment-badge-pill"><i class="fa-regular fa-clock"></i> ${cfg.duration || 10}s Dauer</span>
+                    <span class="treatment-badge-pill"><i class="fa-solid fa-film"></i> ${cfg.shot_count || 'auto'} Shots</span>
+                    <span class="treatment-badge-pill"><i class="fa-solid fa-crop-simple"></i> ${cfg.aspect_ratio || '16:9'}</span>
+                    <span class="treatment-badge-pill"><i class="fa-solid fa-gauge-high"></i> ${cfg.pacing_style || 'balanced'}</span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn-primary" onclick="applyAutoBotTreatment(false)" style="padding:7px 14px; font-size:0.82rem; font-weight:600; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-check"></i> Parameter & Skript ins Regie-Board übernehmen
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="applyAutoBotTreatment(true)" style="padding:7px 14px; font-size:0.82rem; font-weight:600; display:flex; align-items:center; gap:6px; background:linear-gradient(135deg, var(--accent), var(--primary)); border:none; color:#fff;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Übernehmen & Direkt Storyboard starten
+                    </button>
+                </div>
+            </div>
+        `;
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    window.applyAutoBotTreatment = function(autoStart = false) {
+        const t = window.lastAutoBotTreatment;
+        if (!t) return;
+
+        const cfg = t.recommended_config || {};
+        const conceptEl = document.getElementById('autobot_concept');
+        const durationEl = document.getElementById('autobot_duration');
+        const shotCountEl = document.getElementById('autobot_shot_count');
+        const aspectEl = document.getElementById('autobot_aspect');
+        const pacingEl = document.getElementById('autobot_pacing');
+        const genreEl = document.getElementById('autobot_genre');
+
+        if (conceptEl && t.polished_script) conceptEl.value = t.polished_script;
+        if (durationEl && cfg.duration) durationEl.value = String(cfg.duration);
+        if (shotCountEl && cfg.shot_count) shotCountEl.value = String(cfg.shot_count);
+        if (aspectEl && cfg.aspect_ratio) aspectEl.value = String(cfg.aspect_ratio);
+        if (pacingEl && cfg.pacing_style) pacingEl.value = String(cfg.pacing_style);
+
+        if (genreEl && cfg.genre) {
+            for (let opt of genreEl.options) {
+                if (opt.value.toLowerCase().includes(cfg.genre.toLowerCase()) || cfg.genre.toLowerCase().includes(opt.value.toLowerCase())) {
+                    genreEl.value = opt.value;
+                    break;
+                }
+            }
+        }
+
+        showToast("🎬 Regie-Treatment & Parameter erfolgreich ins Board übernommen!");
+
+        if (autoStart) {
+            setTimeout(() => {
+                if (typeof window.runAutoBotStoryboard === 'function') {
+                    window.runAutoBotStoryboard();
+                }
+            }, 300);
+        }
+    };
 
     window.loadAutoBotPreset = function(type) {
         const conceptEl = document.getElementById('autobot_concept');

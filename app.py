@@ -555,6 +555,71 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
     response.headers['Connection'] = 'keep-alive'
     return response
 
+@app.route('/api/autobot/treatment', methods=['POST'])
+def generate_autobot_treatment():
+    data = request.json or {}
+    raw_idea = data.get('idea', '').strip()
+    current_genre = data.get('genre', 'Hollywood Storytelling (Drama)')
+    current_ar = data.get('aspect_ratio', '16:9')
+    model = data.get('model', 'gemini-3.5-flash-lite')
+    lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
+
+    print(f"[AutoBot Co-Pilot] Synthesizing Director Treatment for: {raw_idea[:60]}...")
+
+    sys_prompt = """Du bist der weltweit führende Creative Director, Video-Dramaturg und Co-Pilot für KI-Video Storyboards (Veo 3.1, Google Flow, TikTok, Hollywood Cinema).
+Deine Aufgabe: Analysiere die Benutzer-Idee (oder schlage eine brillante virale / dramaturgische Film- oder Werbeidee vor, falls leer oder kurz), erstelle ein professionelles Regie-Treatment und eine fundierte Wirkungs-Analyse ("Was für ein visuelles und emotionales Ergebnis erwartet den Zuschauer?").
+
+REGELN:
+1. Erkenne das Genre (Comedy / Drama / Action / Commercial / Sci-Fi / Thriller).
+2. Passe die Shot-Anzahl und Dauer exakt an die Idee an (z. B. 3 Shots für Comedy-Pointen / TikTok Hooks; 4 Shots für 2x2 Step-Ads; 6-8 Shots für Trailers/Kurzfilme).
+3. Formuliere ein packendes, chronologisches Konzept-Skript mit konkreten visuellen Phasen und Kamerabewegungen.
+
+Antworte AUSSCHLIESSLICH im folgenden validen JSON-Format:
+{
+  "title": "Prägnanter Kurzfilm- / Commercial-Titel",
+  "logline": "1 packender Satz, der den Kern der Handlung / des Spots zusammenfasst",
+  "dramaturgy": {
+    "hook": "Erste 1-2 Sekunden: Was fesselt sofort das Auge / die Aufmerksamkeit?",
+    "development": "Visuelle Steigerung / Spannungsaufbau / Dynamik",
+    "payoff": "Climax, Twist oder emotionale/humorvolle Schlusspointe"
+  },
+  "expected_impact": "Detaillierte Regie-Analyse auf Deutsch (2-3 Sätze): Warum funktioniert dieses Video? Welche Emotionen (Lachen, Staunen, Gänsehaut, Verlangen) werden erzeugt? Wo liegt der psychologische / virale Hebel?",
+  "recommended_config": {
+    "duration": 10,
+    "shot_count": "3",
+    "aspect_ratio": "9:16",
+    "pacing_style": "fast",
+    "genre": "Hollywood Storytelling (Drama)"
+  },
+  "polished_script": "Vollständiger, kinoreifer und dramaturgisch perfekter Konzepttext auf Deutsch mit visuellen Phasen, Kameradynamik und Licht, bereit für den Storyboard AutoBot."
+}"""
+
+    user_prompt = f"Benutzer-Idee / Stichworte:\n{raw_idea if raw_idea else 'Schlage eine virale, kreative Kurzfilm- oder Werbe-Idee mit hohem visuellem Impact vor.'}\nAktuelles Genre: {current_genre}\nAktuelles Format: {current_ar}"
+
+    messages = [
+        {"role": "system", "content": sys_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+
+    raw_res = None
+    for ev_type, ev_val in get_ai_response_stream(messages, model, temperature=0.6, lm_studio_base=lm_url, timeout=30.0, response_format={"type": "json_object"}):
+        if ev_type == 'result':
+            raw_res = ev_val
+            break
+
+    if not raw_res:
+        return jsonify({"error": "Keine Antwort von der Regie-KI erhalten."}), 500
+
+    try:
+        clean = raw_res.strip()
+        if "```json" in clean: clean = clean.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean: clean = clean.split("```")[1].split("```")[0].strip()
+        treatment_data = json.loads(clean)
+        return jsonify({"status": "success", "treatment": treatment_data})
+    except Exception as e:
+        print(f"[AutoBot Co-Pilot Error] {e}")
+        return jsonify({"status": "error", "message": str(e), "raw": raw_res}), 500
+
 @app.route('/api/copilot', methods=['POST'])
 def run_copilot():
     data = request.json
