@@ -79,14 +79,20 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
     
     if mapped == 'lm-studio':
         model_chain = ['lm-studio']
-    elif mapped == 'gemini-3.5-flash-lite':
-        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'lm-studio']
-    elif mapped == 'gemini-3.5-flash':
-        model_chain = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'lm-studio']
     elif mapped == 'gemini-3.6-flash':
-        model_chain = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'lm-studio']
+        model_chain = ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+    elif mapped == 'gemini-3.5-flash':
+        model_chain = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+    elif mapped == 'gemini-3.5-flash-lite':
+        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+    elif mapped == 'gemini-2.5-flash':
+        model_chain = ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'lm-studio']
     else:
-        model_chain = [mapped, 'gemini-3.5-flash', 'gemini-2.5-flash', 'lm-studio']
+        model_chain = [mapped, 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+
+    # Deduplicate chain while preserving order
+    seen = set()
+    model_chain = [x for x in model_chain if not (x in seen or seen.add(x))]
 
     last_err = None
 
@@ -100,28 +106,22 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
             target_model = target_model_name
             is_gemini = True
 
-        max_retries = 3 if is_gemini else 1
-        base_delay = 3
-
-        for attempt in range(max_retries):
-            try:
-                res = client.chat.completions.create(
-                    model=target_model,
-                    messages=messages,
-                    temperature=temperature
-                )
-                yield ('result', res.choices[0].message.content)
-                return
-            except Exception as e:
-                last_err = str(e)
-                if is_gemini and ("429" in last_err or "RESOURCE_EXHAUSTED" in last_err or "quota" in last_err.lower()):
-                    delay = base_delay * (attempt + 1)
-                    yield ('log', f"⚠️ Modell {target_model} Rate-Limit (429). Warte {delay}s... (Versuch {attempt+1}/{max_retries})")
-                    time.sleep(delay)
-                else:
-                    break # Switch to fallback model in model_chain
-        
-        yield ('log', f"🔄 Wechsele auf Fallback-Modell wegen Fehler in {target_model_name}...")
+        try:
+            res = client.chat.completions.create(
+                model=target_model,
+                messages=messages,
+                temperature=temperature,
+                timeout=12.0
+            )
+            yield ('result', res.choices[0].message.content)
+            return
+        except Exception as e:
+            last_err = str(e)
+            if is_gemini and ("429" in last_err or "RESOURCE_EXHAUSTED" in last_err or "quota" in last_err.lower()):
+                yield ('log', f"⚡ Modell {target_model} Quota/Rate-Limit erreicht. Schalte sofort auf Fallback um...")
+            else:
+                yield ('log', f"🔄 Wechsele auf Fallback-Modell wegen Timeout/Fehler in {target_model_name}...")
+            continue
 
     yield ('error', f"Alle Modelle in der Fallback-Kette fehlgeschlagen. Letzter Fehler: {last_err}")
 
@@ -167,7 +167,74 @@ def optimize_goal():
     optimized = get_ai_response(messages, model=model, temperature=0.5, lm_studio_base=lm_url)
     return jsonify({"optimized_goal": optimized if optimized else ""})
 
-@app.route('/api/autobot/storyboard', methods=['POST'])
+def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
+    """Constructs a flawless, bracket-free Agency Storyboard Pitch Deck Poster prompt matching the exact shot count and grid layout."""
+    title = (meta.get('title') or 'Cinematic Commercial').upper()
+    dur = meta.get('total_duration_seconds', 20)
+    genre = meta.get('genre', 'High-End Commercial')
+    
+    # Extract audio key and focus
+    audio_key = 'Crisp Sound Design + ASMR Atmosphere'
+    for s in shots:
+        if s.get('audio_cues'):
+            audio_key = s.get('audio_cues').split('/')[0].replace('Dialogue:', '').strip()
+            break
+            
+    focus_key = meta.get('focus', '')
+    if not focus_key and shots:
+        focus_key = shots[0].get('dialogue', {}).get('speaker') or ''
+    if not focus_key:
+        focus_key = 'Main Subject'
+    
+    num_shots = len(shots)
+    if num_shots <= 2:
+        grid_desc = f'A structured 1x2 horizontal dual-panel presentation board with {num_shots} sequential numbered scene cards'
+    elif num_shots <= 4:
+        grid_desc = f'A structured 2x2 grid layout presentation board with {num_shots} sequential numbered scene cards'
+    elif num_shots <= 6:
+        grid_desc = f'A structured 2x3 grid layout presentation board with {num_shots} sequential numbered scene cards'
+    else:
+        grid_desc = f'A structured 2x4 grid layout presentation board with {num_shots} sequential numbered scene cards'
+        
+    panels_text = []
+    for s in shots:
+        s_num = s.get('shot_number', 1)
+        s_dur = s.get('duration_seconds', 3)
+        framing = s.get('framing', 'Cinematic Shot')
+        rig = s.get('camera_rig', {})
+        cam_info = f"{framing}, {rig.get('camera', 'Arri Alexa')} {rig.get('focal_length', '50mm')} {rig.get('lens', 'Prime')}"
+        light_info = s.get('lighting', 'Cinematic studio lighting with realistic subsurface scattering')
+        motion_info = s.get('camera_motion', 'Smooth cinematic camera movement')
+        detail_info = s.get('director_notes', '') or s.get('keyframe_image_prompt', '')[:60]
+        
+        # Strip all bracket characters to prevent Midjourney placeholder hallucinations
+        cam_info = str(cam_info).replace('[', '').replace(']', '')
+        light_info = str(light_info).replace('[', '').replace(']', '')
+        motion_info = str(motion_info).replace('[', '').replace(']', '')
+        detail_info = str(detail_info).replace('[', '').replace(']', '')
+        
+        panel_str = (
+            f"Scene {s_num} ({s_dur}s badge): {framing}. "
+            f"Camera: {cam_info}. "
+            f"Visual: {light_info}. "
+            f"Action: {motion_info}. "
+            f"Product detail: {detail_info}."
+        )
+        panels_text.append(panel_str)
+        
+    scenes_joined = " ".join(panels_text)
+    first_dur = shots[0].get('duration_seconds', 3) if shots else 3
+    
+    prompt = (
+        f"A professional advertising agency presentation board, campaign pitch deck storyboard infographic poster. "
+        f"Top banner with bold uppercase typography 'PREMIUM ADVERTISING AGENCY PRESENTATION: {title}'. "
+        f"Header features 4 distinct colored metadata badge pills: 'Duration: {dur} Seconds', 'Style: {genre}', 'Focus: {focus_key}', 'Audio: {audio_key}', and a top-right info card 'Why This Style Works: High-impact cinematic visual pacing designed for maximum engagement and brand recall'. "
+        f"Below is {grid_desc}. Each scene card has a top-left 'Scene X' badge, a top-right red duration badge (e.g. '{first_dur}s'), and a clean white border. "
+        f"Underneath each image panel are 4 clean structured typographic subtitle lines (Camera, Visual, Action, Product detail): {scenes_joined} "
+        f"Warm cream off-white editorial presentation board background, sharp graphic design layout, crisp typography, clean card margins, commercial advertising photography, 8k resolution concept art {ar_tag}"
+    )
+    return prompt
+
 @app.route('/api/autobot/storyboard', methods=['POST'])
 def generate_autobot_storyboard():
     data = request.json or {}
@@ -410,10 +477,12 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
             clean_json = raw_res.strip()
             if "```json" in clean_json:
                 clean_json = clean_json.split("```json")[1].split("```")[0].strip()
-            elif "```" in clean_json:
-                clean_json = clean_json.split("```")[1].split("```")[0].strip()
-
             parsed = json.loads(clean_json)
+            if 'storyboard_meta' in parsed:
+                meta = parsed['storyboard_meta']
+                shots = parsed.get('shots', [])
+                meta['master_contact_sheet_prompt'] = build_agency_master_prompt(meta, shots, ar_tag)
+                
             yield f"data: {json.dumps({'event': 'final_storyboard', 'data': parsed, 'message': '4-Agenten Storyboard erfolgreich beendet!'})}\n\n"
         except Exception as e:
             print(f"[Storyboard Error] JSON Parsing failed: {e}")
