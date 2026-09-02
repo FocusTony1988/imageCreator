@@ -634,12 +634,25 @@ Every value inside the JSON must be written in English.`;
     window.magicPolish = async function(textareaId) {
         const el = document.getElementById(textareaId);
         if (!el || !el.value.trim()) {
-            showToast("Bitte gib zuerst einen Text zum Aufhübschen ein!", true);
+            showToast("Bitte gib zuerst einen Text oder Stichworte zum Aufhübschen ein!", true);
             return;
         }
 
+        const btn = document.querySelector(`button[onclick*="${textareaId}"]`) || document.getElementById('btnPolishAutoBot');
+        const originalBtnHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.innerHTML = '<span class="spinner" style="display:inline-block; width:10px; height:10px;"></span> Polishing...';
+            btn.disabled = true;
+        }
+
         const originalText = el.value.trim();
-        showToast("✨ Magic Polish bereichert deine Idee mit Gemini 3.5 Flash Lite...");
+        const isAutoBotVideo = (textareaId === 'autobot_concept');
+
+        showToast(isAutoBotVideo ? "🎬 Video-Polish verwandelt deine Idee in ein kinoreifes Skript..." : "✨ Magic Polish bereichert deine Idee mit Gemini 3.5 Flash Lite...");
+
+        const systemPrompt = isAutoBotVideo 
+            ? "Du bist ein preisgekrönter Regisseur und Werbefilm-Konzeptioner für AI-Video & Multi-Shot Storyboards (Veo 3.1, Google Flow, Midjourney). Deine Aufgabe: Verwandle die kurze Idee oder Stichworte des Nutzers in ein packendes, bildgewaltiges und chronologisches Video-Konzept auf Deutsch. Betone dynamische physische Aktionen, filmische Lichtstimmung, Partikel/Texturen und sensorische Sound-Atmosphäre. Formuliere flüssig in 2-3 mitreißenden Sätzen. Keine Markdown-Listen, keine Anführungszeichen, kein Fließtext drumherum."
+            : "Du bist ein meisterhafter KI-Prompt-Engineer. Bereichere die Idee des Nutzers mit stimmungsvollen, hochauflösenden Details und visuellen Adjektiven in Deutsch. Antworte in 1-2 Sätzen, flüssig und direkt ohne Markdown.";
 
         try {
             const response = await fetch(BACKEND_API_URL + '/api/optimize', {
@@ -648,20 +661,29 @@ Every value inside the JSON must be written in English.`;
                 body: JSON.stringify({
                     goal: originalText,
                     model: 'gemini-3.5-flash-lite',
-                    system_prompt: 'Du bist ein meisterhafter KI-Prompt-Engineered. Bereichere die Idee des Nutzers mit stimmungsvollen, hochauflösenden Details und visuellen Adjektiven in Deutsch. Antworte in 1-2 Sätzen, flüssig und direkt ohne Markdown.'
+                    system_prompt: systemPrompt
                 })
             });
 
             if (!response.ok) throw new Error("API-Fehler");
             const data = await response.json();
             if (data.optimized_goal) {
-                el.value = data.optimized_goal.trim();
-                showToast("✨ Idee erfolgreich aufgehübscht!");
-                updateGenSummary();
+                let polished = data.optimized_goal.trim();
+                if (polished.startsWith('"') && polished.endsWith('"')) {
+                    polished = polished.slice(1, -1);
+                }
+                el.value = polished;
+                showToast(isAutoBotVideo ? "🎬 Video-Konzept erfolgreich veredelt!" : "✨ Idee erfolgreich aufgehübscht!");
+                if (typeof updateGenSummary === 'function') updateGenSummary();
             }
         } catch (e) {
             console.error(e);
-            showToast("Fehler beim Aufhübschen.", true);
+            showToast("Fehler beim Aufhübschen: " + e.message, true);
+        } finally {
+            if (btn) {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+            }
         }
     };
 
@@ -3386,11 +3408,12 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         }
 
         const duration = document.getElementById('autobot_duration')?.value || "30";
+        const shot_count = document.getElementById('autobot_shot_count')?.value || "auto";
         const aspect_ratio = document.getElementById('autobot_aspect')?.value || "16:9";
         const genre = document.getElementById('autobot_genre')?.value || "Hollywood Storytelling";
         const pacing_style = document.getElementById('autobot_pacing')?.value || "balanced";
         const character = document.getElementById('autobot_character')?.value.trim() || "";
-        const model = document.getElementById('autobot_model')?.value || "gemini-3.5-flash";
+        const model = document.getElementById('autobot_model')?.value || "gemini-3.5-flash-lite";
         const language = document.getElementById('autobot_language')?.value || "de";
         const lmUrl = document.getElementById('apiUrl')?.value.trim() || HARDCODED_URL;
 
@@ -3416,6 +3439,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                 body: JSON.stringify({
                     concept: concept,
                     duration: duration,
+                    shot_count: shot_count,
                     aspect_ratio: aspect_ratio,
                     genre: genre,
                     pacing_style: pacing_style,

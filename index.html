@@ -1273,21 +1273,38 @@
 
                         <div class="form-group" style="margin-bottom:15px;">
                             <label for="autobot_concept"><strong>Kurzfilm-Idee / Storyboard Konzept:</strong></label>
-                            <textarea id="autobot_concept" rows="4" placeholder="Z.B.: Eine Wissenschaftlerin entdeckt in einem verlassenen Untergrund-Labor ein mysteriöses blaues Lichtsignal und versucht den Ursprung zu entschlüsseln..." style="width:100%; border-radius:8px; padding:10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.9rem;"></textarea>
+                            <div style="position:relative;">
+                                <textarea id="autobot_concept" rows="4" placeholder="Z.B.: Eine Pizza Produktion - vom Teig über dem belegen - backen - bis zum servieren..." style="width:100%; border-radius:8px; padding:10px 85px 10px 10px; background:var(--bg-input); border:1px solid var(--border-color); color:#fff; font-family:inherit; font-size:0.9rem;"></textarea>
+                                <button class="magic-polish-btn" id="btnPolishAutoBot" onclick="magicPolish('autobot_concept')" title="Idee in ein kinoreifes Video-Skript verwandeln" style="bottom:10px; right:10px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Polish</button>
+                            </div>
                         </div>
 
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
                             <div class="form-group">
                                 <label for="autobot_duration"><strong>Ziel-Videolänge:</strong></label>
                                 <select id="autobot_duration" style="width:100%;">
-                                    <option value="10">10 Sekunden (2 Shots - Ultra-Fast Ad / Social Hook)</option>
-                                    <option value="15">15 Sekunden (2-3 Shots - Dynamic Commercial)</option>
-                                    <option value="20">20 Sekunden (3-4 Shots - Action/Hook)</option>
-                                    <option value="30" selected>30 Sekunden (4-6 Shots - Teaser/Story)</option>
-                                    <option value="45">45 Sekunden (6-8 Shots - Narrative Commercial)</option>
-                                    <option value="60">60 Sekunden / 1 Min (8-10 Shots - Kurz-Doku)</option>
-                                    <option value="90">90 Sekunden (11-14 Shots - Multi-Scene)</option>
-                                    <option value="120">120 Sekunden / 2 Min (15-20 Shots - Epi Kurzfilm)</option>
+                                    <option value="10">10 Sekunden</option>
+                                    <option value="15">15 Sekunden</option>
+                                    <option value="20">20 Sekunden</option>
+                                    <option value="30" selected>30 Sekunden</option>
+                                    <option value="45">45 Sekunden</option>
+                                    <option value="60">60 Sekunden / 1 Min</option>
+                                    <option value="90">90 Sekunden</option>
+                                    <option value="120">120 Sekunden / 2 Min</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="autobot_shot_count"><strong>🎬 Szenenanzahl (Shot Count):</strong></label>
+                                <select id="autobot_shot_count" style="width:100%;">
+                                    <option value="auto" selected>⚡ Auto (Intelligentes Pacing)</option>
+                                    <option value="2">2 Shots (Lange Takes)</option>
+                                    <option value="3">3 Shots (Klassischer 3-Akt)</option>
+                                    <option value="4">4 Shots (2x2 Grid - Dynamische Steps)</option>
+                                    <option value="6">6 Shots (2x3 Grid - Kompaktes Board)</option>
+                                    <option value="8">8 Shots (2x4 Grid - Full Agency Commercial Board)</option>
+                                    <option value="10">10 Shots (Epi Multi-Cut)</option>
+                                    <option value="12">12 Shots (Komplexer Kurzfilm)</option>
                                 </select>
                             </div>
 

@@ -240,11 +240,12 @@ def generate_autobot_storyboard():
     data = request.json or {}
     concept = data.get('concept', '')
     duration = int(data.get('duration', 30))
+    shot_count_req = data.get('shot_count', 'auto')
     aspect_ratio = data.get('aspect_ratio', '16:9')
     genre = data.get('genre', 'Hollywood Storytelling')
     pacing_style = data.get('pacing_style', 'balanced')
     character_info = data.get('character', '')
-    model = data.get('model', 'gemini-3.5-flash')
+    model = data.get('model', 'gemini-3.5-flash-lite')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
     language = data.get('language', 'de')
     export_format = data.get('export_format', 'google_flow')
@@ -273,17 +274,27 @@ def generate_autobot_storyboard():
         yield f"data: {json.dumps({'event': 'log', 'message': '🚀 AutoBot Multi-Agent Board gestartet: Ingestion & Pacing...'})}\n\n"
         
         if pacing_style == 'fast':
-            pacing_desc = "Fast & Punchy (Schnelle Schnitte 3s-5s für maximale Dynamik / Commercials)"
-            target_avg_shot = 4
+            pacing_desc = "Fast & Punchy (Schnelle Schnitte 2.5s-5s für maximale Dynamik / Commercials)"
+            target_avg_shot = 3.5
         elif pacing_style == 'atmospheric':
-            pacing_desc = "Slow Atmospheric (Ruhige, getragene Kamerafahrten 6s-8s / Doku / Drama)"
-            target_avg_shot = 7
+            pacing_desc = "Slow Atmospheric (Ruhige, getragene Kamerafahrten 5s-8s / Doku / Drama)"
+            target_avg_shot = 6.0
         else:
-            pacing_desc = "Cinematic Balanced (Dynamischer Rhythmus-Wechsel zwischen 3s, 4s, 5s, 6s & 8s)"
-            target_avg_shot = 5
+            pacing_desc = "Cinematic Balanced (Dynamischer Rhythmus 3s - 7s)"
+            target_avg_shot = 4.5
 
-        estimated_shots = max(2, round(duration / target_avg_shot))
-        yield f"data: {json.dumps({'event': 'log', 'message': f'🎬 Ziel-Dauer: {duration}s -> Pacing: {pacing_desc} (~{estimated_shots} Shots | Format: {export_format.upper()} | Sprache: {language.upper()})'})}\n\n"
+        if shot_count_req != 'auto':
+            try:
+                estimated_shots = max(1, int(shot_count_req))
+                shot_mode_text = f"EXAKT {estimated_shots} Shots (Manuell festgelegt)"
+            except Exception:
+                estimated_shots = max(2, round(duration / target_avg_shot))
+                shot_mode_text = f"~{estimated_shots} Shots (Auto Pacing)"
+        else:
+            estimated_shots = max(2, round(duration / target_avg_shot))
+            shot_mode_text = f"~{estimated_shots} Shots (Auto Pacing)"
+
+        yield f"data: {json.dumps({'event': 'log', 'message': f'🎬 Ziel-Dauer: {duration}s -> {shot_mode_text} | Pacing: {pacing_desc} | Format: {export_format.upper()} | Sprache: {language.upper()}'})}\n\n"
 
         # ---------------------------------------------------------
         # STAGE 2: 4 SPECIALIZED EXPERT AGENTS ASSEMBLY
@@ -377,8 +388,8 @@ FEEDBACK DER 4 EXPERTEN:
 {reviews_str}
 
 STRIKTE REGIE- & SCHEMA-REGELN:
-1. **DYNAMISCHES PACING**: Die Summe aller `duration_seconds` MUSS EXAKT {duration} Sekunden ergeben (Shots zwischen 3s und 8s)!
-2. **SHOT NUMMERIERUNG**: `shot_number` MUSS ein fortlaufender Integer sein (1, 2, 3, 4...). KEINE Split-Nummern (wie 4a/4b).
+1. **DYNAMISCHES PACING**: Die Summe aller `duration_seconds` MUSS EXAKT {duration} Sekunden ergeben!
+2. **SHOT ANZAHL & NUMMERIERUNG**: Es MÜSSEN EXAKT {estimated_shots} Shots generiert werden (Shot 1 bis Shot {estimated_shots})! `shot_number` MUSS fortlaufend von 1 bis {estimated_shots} sein. KEINE Split-Nummern (wie 4a/4b).
 3. **CAMERA RIG & OPTIK**: Jedes Shot-Objekt MUSS ein `camera_rig` Objekt enthalten mit:
    - "camera": "Arri Alexa Mini LF" | "RED V-Raptor" | "Sony Venice 2" | "IMAX 70mm"
    - "lens": "Anamorphic Prime" | "Master Prime" | "Vintage Cooke Speed Panchro"
