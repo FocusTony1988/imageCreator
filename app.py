@@ -68,7 +68,7 @@ def map_model_name(model_name):
         return 'lm-studio'
     return model_name
 
-def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1", timeout=60.0):
+def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1", timeout=60.0, response_format=None):
     """Core generator that calls Gemini with automatic fallback (3.5 Flash-Lite -> 2.5 Flash -> LM Studio)."""
     import time
     import re
@@ -107,14 +107,34 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
             is_gemini = True
 
         try:
-            res = client.chat.completions.create(
-                model=target_model,
-                messages=messages,
-                temperature=temperature,
-                timeout=timeout
-            )
-            yield ('result', res.choices[0].message.content)
-            return
+            kwargs = {
+                'model': target_model,
+                'messages': messages,
+                'temperature': temperature,
+                'timeout': timeout
+            }
+            if response_format and is_gemini:
+                kwargs['response_format'] = response_format
+
+            if is_gemini:
+                kwargs['stream'] = True
+                stream_res = client.chat.completions.create(**kwargs)
+                accumulated = []
+                last_ping = time.time()
+                for chunk in stream_res:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        accumulated.append(chunk.choices[0].delta.content)
+                    now = time.time()
+                    if now - last_ping > 1.5:
+                        yield ('ping', ': keep-alive\n\n')
+                        last_ping = now
+                full_text = "".join(accumulated)
+                yield ('result', full_text)
+                return
+            else:
+                res = client.chat.completions.create(**kwargs)
+                yield ('result', res.choices[0].message.content)
+                return
         except Exception as e:
             last_err = str(e)
             if is_gemini and ("429" in last_err or "RESOURCE_EXHAUSTED" in last_err or "quota" in last_err.lower()):
@@ -169,20 +189,29 @@ def optimize_goal():
 
 def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
     """Constructs a flawless, bracket-free Agency Storyboard Pitch Deck Poster prompt matching the exact shot count and grid layout."""
-    title = (meta.get('title') or 'Cinematic Commercial').upper()
+    if not isinstance(meta, dict):
+        meta = {}
+    if not isinstance(shots, list):
+        shots = []
+
+    title = str(meta.get('title') or 'Cinematic Commercial').upper()
     dur = meta.get('total_duration_seconds', 20)
     genre = meta.get('genre', 'High-End Commercial')
     
     # Extract audio key and focus
     audio_key = 'Crisp Sound Design + ASMR Atmosphere'
     for s in shots:
-        if s.get('audio_cues'):
-            audio_key = s.get('audio_cues').split('/')[0].replace('Dialogue:', '').strip()
+        if isinstance(s, dict) and s.get('audio_cues'):
+            audio_key = str(s.get('audio_cues')).split('/')[0].replace('Dialogue:', '').strip()
             break
             
     focus_key = meta.get('focus', '')
-    if not focus_key and shots:
-        focus_key = shots[0].get('dialogue', {}).get('speaker') or ''
+    if not focus_key and shots and isinstance(shots[0], dict):
+        d_val = shots[0].get('dialogue')
+        if isinstance(d_val, dict):
+            focus_key = d_val.get('speaker', '')
+        elif isinstance(d_val, str):
+            focus_key = d_val
     if not focus_key:
         focus_key = 'Main Subject'
     
@@ -197,15 +226,20 @@ def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
         grid_desc = f'A structured 2x4 grid layout presentation board with {num_shots} sequential numbered scene cards'
         
     panels_text = []
-    for s in shots:
-        s_num = s.get('shot_number', 1)
+    for idx, s in enumerate(shots):
+        if not isinstance(s, dict):
+            continue
+        s_num = s.get('shot_number', idx + 1)
         s_dur = s.get('duration_seconds', 3)
         framing = s.get('framing', 'Cinematic Shot')
         rig = s.get('camera_rig', {})
-        cam_info = f"{framing}, {rig.get('camera', 'Arri Alexa')} {rig.get('focal_length', '50mm')} {rig.get('lens', 'Prime')}"
+        if isinstance(rig, dict):
+            cam_info = f"{framing}, {rig.get('camera', 'Arri Alexa')} {rig.get('focal_length', '50mm')} {rig.get('lens', 'Prime')}"
+        else:
+            cam_info = f"{framing}, {str(rig)}"
         light_info = s.get('lighting', 'Cinematic studio lighting with realistic subsurface scattering')
         motion_info = s.get('camera_motion', 'Smooth cinematic camera movement')
-        detail_info = s.get('director_notes', '') or s.get('keyframe_image_prompt', '')[:60]
+        detail_info = s.get('director_notes', '') or str(s.get('keyframe_image_prompt', ''))[:60]
         
         # Strip all bracket characters to prevent Midjourney placeholder hallucinations
         cam_info = str(cam_info).replace('[', '').replace(']', '')
@@ -223,7 +257,7 @@ def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
         panels_text.append(panel_str)
         
     scenes_joined = " ".join(panels_text)
-    first_dur = shots[0].get('duration_seconds', 3) if shots else 3
+    first_dur = shots[0].get('duration_seconds', 3) if shots and isinstance(shots[0], dict) else 3
     
     prompt = (
         f"A professional advertising agency presentation board, campaign pitch deck storyboard infographic poster. "
@@ -259,10 +293,12 @@ def generate_autobot_storyboard():
 
     def event_stream():
         # Helper to call AI and yield logs during retries
-        def call_ai(messages, temperature=0.7):
-            for event_type, val in get_ai_response_stream(messages, model, temperature, lm_studio_base=lm_url):
+        def call_ai(messages, temperature=0.7, timeout=60.0, response_format=None):
+            for event_type, val in get_ai_response_stream(messages, model, temperature, lm_studio_base=lm_url, timeout=timeout, response_format=response_format):
                 if event_type == 'log':
                     yield ('log', f"data: {json.dumps({'event': 'log', 'message': val})}\n\n")
+                elif event_type == 'ping':
+                    yield ('ping', val)
                 elif event_type == 'result':
                     yield ('result', val)
                 elif event_type == 'error':
@@ -328,7 +364,7 @@ Strukturiere das Konzept vorab in ca. {estimated_shots} Shots mit Idee, Kameraf�
 
         draft_res = None
         for ev_type, ev_val in call_ai([{"role": "system", "content": "Du bist ein erfahrener KI-Regisseur und Director of Photography."}, {"role": "user", "content": draft_prompt}], temperature=0.6):
-            if ev_type == 'log':
+            if ev_type in ('log', 'ping'):
                 yield ev_val
             elif ev_type == 'result':
                 draft_res = ev_val
@@ -359,17 +395,22 @@ Liefere kurze, präzise Anweisungen in Stichpunkten."""
         reviews = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             future_to_role = {executor.submit(evaluate_expert_role, role): role for role in experts}
-            for future in concurrent.futures.as_completed(future_to_role):
-                role = future_to_role[future]
-                try:
-                    _, rev_text = future.result()
-                    if rev_text:
-                        reviews.append(f"### Gutachten von {role}:\n{rev_text}")
-                        yield f"data: {json.dumps({'event': 'log', 'message': f'   💬 Feedback von {role} erhalten.'})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} hat Entwurf bestätigt.'})}\n\n"
-                except Exception as ex:
-                    yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} übersprungen: {ex}'})}\n\n"
+            pending = set(future_to_role.keys())
+            while pending:
+                done, pending = concurrent.futures.wait(pending, timeout=1.0, return_when=concurrent.futures.FIRST_COMPLETED)
+                if not done:
+                    yield ": keep-alive\n\n"
+                for future in done:
+                    role = future_to_role[future]
+                    try:
+                        _, rev_text = future.result()
+                        if rev_text:
+                            reviews.append(f"### Gutachten von {role}:\n{rev_text}")
+                            yield f"data: {json.dumps({'event': 'log', 'message': f'   💬 Feedback von {role} erhalten.'})}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} hat Entwurf bestätigt.'})}\n\n"
+                    except Exception as ex:
+                        yield f"data: {json.dumps({'event': 'log', 'message': f'   ⚠️ {role} übersprungen: {ex}'})}\n\n"
 
         reviews_str = "\n\n".join(reviews) if reviews else "Alle Experten haben den Entwurf ohne Einwände freigegeben."
 
@@ -474,8 +515,8 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
         ]
 
         raw_res = None
-        for ev_type, ev_val in call_ai(messages, temperature=0.4):
-            if ev_type == 'log':
+        for ev_type, ev_val in call_ai(messages, temperature=0.4, response_format={"type": "json_object"}):
+            if ev_type in ('log', 'ping'):
                 yield ev_val
             elif ev_type == 'result':
                 raw_res = ev_val
