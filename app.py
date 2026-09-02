@@ -68,8 +68,8 @@ def map_model_name(model_name):
         return 'lm-studio'
     return model_name
 
-def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1"):
-    """Core generator that calls Gemini with automatic fallback (3.5 Flash -> 2.5 Flash -> LM Studio)."""
+def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1", timeout=60.0):
+    """Core generator that calls Gemini with automatic fallback (3.5 Flash-Lite -> 2.5 Flash -> LM Studio)."""
     import time
     import re
     
@@ -84,9 +84,9 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
     elif mapped == 'gemini-3.5-flash':
         model_chain = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
     elif mapped == 'gemini-3.5-flash-lite':
-        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'lm-studio']
     elif mapped == 'gemini-2.5-flash':
-        model_chain = ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'lm-studio']
+        model_chain = ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'lm-studio']
     else:
         model_chain = [mapped, 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
 
@@ -111,7 +111,7 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
                 model=target_model,
                 messages=messages,
                 temperature=temperature,
-                timeout=12.0
+                timeout=timeout
             )
             yield ('result', res.choices[0].message.content)
             return
@@ -120,7 +120,7 @@ def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="htt
             if is_gemini and ("429" in last_err or "RESOURCE_EXHAUSTED" in last_err or "quota" in last_err.lower()):
                 yield ('log', f"⚡ Modell {target_model} Quota/Rate-Limit erreicht. Schalte sofort auf Fallback um...")
             else:
-                yield ('log', f"🔄 Wechsele auf Fallback-Modell wegen Timeout/Fehler in {target_model_name}...")
+                yield ('log', f"🔄 Wechsele auf Fallback-Modell wegen Fehler in {target_model_name}...")
             continue
 
     yield ('error', f"Alle Modelle in der Fallback-Kette fehlgeschlagen. Letzter Fehler: {last_err}")
@@ -488,6 +488,15 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
             clean_json = raw_res.strip()
             if "```json" in clean_json:
                 clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_json:
+                clean_json = clean_json.split("```")[1].split("```")[0].strip()
+
+            if not clean_json.startswith('{'):
+                first_brace = clean_json.find('{')
+                last_brace = clean_json.rfind('}')
+                if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                    clean_json = clean_json[first_brace:last_brace+1].strip()
+
             parsed = json.loads(clean_json)
             if 'storyboard_meta' in parsed:
                 meta = parsed['storyboard_meta']
