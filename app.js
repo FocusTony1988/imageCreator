@@ -3749,43 +3749,52 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                 if (done) break;
 
                 buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n\n');
-                buffer = lines.pop();
+                // Normalize CRLF to LF for reverse proxies (Render / Cloudflare / Nginx)
+                const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const chunks = normalized.split('\n\n');
+                buffer = chunks.pop() || "";
 
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const dataStr = line.replace('data: ', '');
-                        try {
-                            const payload = JSON.parse(dataStr);
-                            if (payload.event === 'log') {
-                                const logEntry = document.createElement('div');
-                                logEntry.innerHTML = `<span style="color:#64748b;">[AutoBot]</span> ${payload.message}`;
-                                logDiv.appendChild(logEntry);
-                                logDiv.scrollTop = logDiv.scrollHeight;
-                            } else if (payload.event === 'final_storyboard') {
-                                statusSpan.innerText = 'Vollständig';
-                                statusSpan.style.color = 'var(--success)';
-                                lastGeneratedStoryboard = payload.data;
-                                renderStoryboardOutput(payload.data);
-                                showToast("Storyboard & Character Bible erfolgreich generiert! 🎬✨");
-                            } else if (payload.event === 'final_storyboard_raw') {
-                                statusSpan.innerText = 'Abgeschlossen (Raw)';
-                                statusSpan.style.color = 'var(--accent)';
-                                const parsed = extractJSON(payload.raw);
-                                if (parsed) {
-                                    lastGeneratedStoryboard = parsed;
-                                    renderStoryboardOutput(parsed);
-                                    showToast("Storyboard generiert!");
-                                } else {
-                                    showToast("Konnte Storyboard-JSON nicht parsen.", true);
+                for (const chunk of chunks) {
+                    const trimmedChunk = chunk.trim();
+                    if (!trimmedChunk || trimmedChunk.startsWith(':')) continue;
+
+                    const lines = trimmedChunk.split('\n');
+                    for (let line of lines) {
+                        line = line.trim();
+                        if (line.startsWith('data:')) {
+                            const dataStr = line.slice(5).trim();
+                            try {
+                                const payload = JSON.parse(dataStr);
+                                if (payload.event === 'log') {
+                                    const logEntry = document.createElement('div');
+                                    logEntry.innerHTML = `<span style="color:#64748b;">[AutoBot]</span> ${payload.message}`;
+                                    logDiv.appendChild(logEntry);
+                                    logDiv.scrollTop = logDiv.scrollHeight;
+                                } else if (payload.event === 'final_storyboard') {
+                                    statusSpan.innerText = 'Vollständig';
+                                    statusSpan.style.color = 'var(--success)';
+                                    lastGeneratedStoryboard = payload.data;
+                                    renderStoryboardOutput(payload.data);
+                                    showToast("Storyboard & Character Bible erfolgreich generiert! 🎬✨");
+                                } else if (payload.event === 'final_storyboard_raw') {
+                                    statusSpan.innerText = 'Abgeschlossen (Raw)';
+                                    statusSpan.style.color = 'var(--accent)';
+                                    const parsed = extractJSON(payload.raw);
+                                    if (parsed) {
+                                        lastGeneratedStoryboard = parsed;
+                                        renderStoryboardOutput(parsed);
+                                        showToast("Storyboard generiert!");
+                                    } else {
+                                        showToast("Konnte Storyboard-JSON nicht parsen.", true);
+                                    }
+                                } else if (payload.event === 'error') {
+                                    statusSpan.innerText = 'Fehler';
+                                    statusSpan.style.color = '#ef4444';
+                                    showToast("Fehler: " + payload.message, true);
                                 }
-                            } else if (payload.event === 'error') {
-                                statusSpan.innerText = 'Fehler';
-                                statusSpan.style.color = '#ef4444';
-                                showToast("Fehler: " + payload.message, true);
+                            } catch (err) {
+                                console.error("SSE JSON parse error:", err, "Line:", line);
                             }
-                        } catch (err) {
-                            console.error("SSE JSON parse error:", err);
                         }
                     }
                 }

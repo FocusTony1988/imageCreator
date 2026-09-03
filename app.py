@@ -53,42 +53,29 @@ def get_lm_studio_model(lm_studio_base):
 
 def map_model_name(model_name):
     """Maps custom UI model names to actual Gemini API model IDs."""
-    model_lower = model_name.lower()
-    if '3.6-flash' in model_lower:
-        return 'gemini-3.6-flash'
-    elif '3.5-flash-lite' in model_lower:
-        return 'gemini-3.5-flash-lite'
-    elif '3.5-flash' in model_lower:
-        return 'gemini-3.5-flash'
-    elif '2.5-flash' in model_lower:
-        return 'gemini-2.5-flash'
-    elif '3.1-flash-lite' in model_lower:
-        return 'gemini-3.1-flash-lite'
-    elif 'lm-studio' in model_lower:
+    model_lower = str(model_name or '').lower()
+    if 'lm-studio' in model_lower:
         return 'lm-studio'
-    return model_name
+    elif '3.1-flash-lite' in model_lower:
+        return 'gemini-2.0-flash-lite'
+    elif '2.0-flash' in model_lower:
+        return 'gemini-2.0-flash'
+    else:
+        # gemini-3.5-flash-lite, gemini-3.6-flash, gemini-2.5-flash all map to valid gemini-2.5-flash
+        return 'gemini-2.5-flash'
 
 def get_ai_response_stream(messages, model, temperature=0.7, lm_studio_base="http://127.0.0.1:1234/v1", timeout=60.0, response_format=None):
-    """Core generator that calls Gemini with automatic fallback (3.5 Flash-Lite -> 2.5 Flash -> LM Studio)."""
+    """Core generator that calls Gemini with automatic fallback (2.5 Flash -> 2.0 Flash -> 1.5 Flash)."""
     import time
     import re
     
     # Model fallback chain
-    model_chain = []
     mapped = map_model_name(model)
     
     if mapped == 'lm-studio':
-        model_chain = ['lm-studio']
-    elif mapped == 'gemini-3.6-flash':
-        model_chain = ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
-    elif mapped == 'gemini-3.5-flash':
-        model_chain = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
-    elif mapped == 'gemini-3.5-flash-lite':
-        model_chain = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'lm-studio']
-    elif mapped == 'gemini-2.5-flash':
-        model_chain = ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'lm-studio']
+        model_chain = ['lm-studio', 'gemini-2.5-flash']
     else:
-        model_chain = [mapped, 'gemini-3.5-flash-lite', 'gemini-2.5-flash', 'lm-studio']
+        model_chain = [mapped, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
 
     # Deduplicate chain while preserving order
     seen = set()
