@@ -551,15 +551,16 @@ Every value inside the JSON must be written in English.`;
         const context = getCurrentGenContext();
         const hasContext = Object.keys(context).length >= 2;
         const badge = document.getElementById('copilotModeBadge');
-        const btnText = document.getElementById('btnRunCopilotText');
+        const btn = document.getElementById('btnRunCopilot');
 
         if (badge) {
             badge.style.display = hasContext ? 'inline-block' : 'none';
         }
-        if (btnText) {
-            btnText.innerText = hasContext 
+        if (btn && !btn.disabled) {
+            const label = hasContext 
                 ? "🔄 Smarte Änderung anwenden & Regler aktualisieren"
                 : "⚡ Dropdowns & Prompt automatisch einstellen";
+            btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnRunCopilotText">${label}</span>`;
         }
     }
 
@@ -733,6 +734,12 @@ Every value inside the JSON must be written in English.`;
             showToast("Fehler beim Co-Pilot Aufruf: " + e.message, true);
         } finally {
             btn.disabled = false;
+            const context = getCurrentGenContext();
+            const hasContext = Object.keys(context).length >= 2;
+            const label = hasContext 
+                ? "🔄 Smarte Änderung anwenden & Regler aktualisieren"
+                : "⚡ Dropdowns & Prompt automatisch einstellen";
+            btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i> <span id="btnRunCopilotText">${label}</span>`;
             updateCopilotModeUI();
         }
     };
@@ -3855,7 +3862,17 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                 const cameraRig = shot.camera_rig || {};
                 const cameraMotion = shot.camera_motion || "Cinematic Movement";
                 const lighting = shot.lighting || "Volumetric cinematic lighting";
-                const dialogue = shot.dialogue || null;
+                
+                const audioDesign = shot.audio_design || {};
+                const dialogue = shot.dialogue || (audioDesign.dialogue_line ? {
+                    speaker: audioDesign.dialogue_speaker || 'Charakter',
+                    line: audioDesign.dialogue_line,
+                    voice_tone: audioDesign.voice_tone || ''
+                } : null);
+
+                const sfx = audioDesign.sfx_foley || (shot.audio_cues ? shot.audio_cues.split('/')[1] : null);
+                const ambience = audioDesign.ambient_soundscape || (shot.audio_cues ? shot.audio_cues.split('/')[2] : null);
+                const veoAudioPrompt = audioDesign.veo_audio_prompt || shot.audio_cues || (dialogue ? `Voice (${dialogue.speaker || 'Charakter'}): "${dialogue.line}". SFX: ${sfx || 'Natural acoustic ambiance'}.` : 'Cinematic sound design and natural atmosphere.');
 
                 const rigStr = [cameraRig.camera, cameraRig.focal_length, cameraRig.lens, cameraRig.aperture].filter(Boolean).join(' • ') || 'Arri Alexa Mini LF • 35mm Anamorphic • T2.0';
 
@@ -3872,7 +3889,7 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button class="btn btn-primary" onclick="transferShotToVeoStudio(${index})" style="padding:4px 10px; font-size:0.75rem; font-weight:bold;">
-                                <i class="fa-solid fa-film"></i> 🎬 In Veo Pro Studio laden
+                                <i class="fa-solid fa-film"></i> 🎬 In Veo Studio laden
                             </button>
                             <button class="btn btn-secondary" onclick="transferShotToCamDirector(${index})" style="padding:4px 10px; font-size:0.75rem;">
                                 <i class="fa-solid fa-video"></i> 🎥 In Camera Director
@@ -3893,13 +3910,38 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                         </span>
                     </div>
 
-                    ${dialogue && dialogue.line ? `
-                    <!-- DIALOGUE BADGE -->
-                    <div style="background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.3); padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:0.82rem;">
-                        <strong style="color:var(--success);"><i class="fa-regular fa-comment-dots"></i> ${dialogue.speaker || 'Charakter'}:</strong> 
-                        <span style="color:#f8fafc; font-style:italic;">"${dialogue.line}"</span>
-                        <span style="font-size:0.7rem; color:var(--text-muted); margin-left:8px; text-transform:uppercase;">[${dialogue.language || 'de'}]</span>
-                    </div>` : ''}
+                    <!-- AUDIO & LIPSYNC STUDIO CARD -->
+                    <div class="audio-studio-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-size:0.75rem; font-weight:bold; color:#10b981; display:flex; align-items:center; gap:5px;">
+                                <i class="fa-solid fa-headphones"></i> 🎧 Audio-, Lipsync- & Sound-Studio
+                            </span>
+                            <button class="btn btn-secondary" onclick="copyShotSubPrompt('audio-${index}')" style="padding:2px 8px; font-size:0.7rem; border-color:rgba(16,185,129,0.4); color:#6ee7b7;">
+                                <i class="fa-regular fa-copy"></i> Audio-Prompt Kopieren
+                            </button>
+                        </div>
+
+                        ${dialogue && dialogue.line ? `
+                        <div style="margin-bottom:6px; font-size:0.82rem; color:#f8fafc;">
+                            <span class="audio-badge">🗣️ Dialog</span>
+                            <strong style="color:var(--success); margin-left:4px;">${dialogue.speaker || 'Charakter'}:</strong> 
+                            <span style="font-style:italic;">"${dialogue.line}"</span>
+                            ${dialogue.voice_tone ? `<span style="font-size:0.72rem; color:#94a3b8; margin-left:6px;">(🎙️ ${dialogue.voice_tone})</span>` : ''}
+                        </div>` : `
+                        <div style="margin-bottom:6px; font-size:0.78rem; color:#94a3b8; font-style:italic;">
+                            <span class="audio-badge">🔇 Instrumental</span> Keine direkte Sprechzeile (reiner Atmo- & Musik-Shot).
+                        </div>`}
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:6px; font-size:0.76rem; color:#cbd5e1; margin-bottom:8px;">
+                            ${sfx ? `<div>🔊 <strong>Foley & SFX:</strong> ${sfx.replace(/SFX:/i, '').trim()}</div>` : ''}
+                            ${ambience ? `<div>🎵 <strong>Raum-Atmo:</strong> ${ambience.replace(/Ambience:/i, '').trim()}</div>` : ''}
+                        </div>
+
+                        <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(16,185,129,0.2); padding:6px 10px; border-radius:4px;">
+                            <div style="font-size:0.68rem; color:#6ee7b7; font-weight:600; margin-bottom:2px;">Veo 3.1 & TTS Master Sound Prompt:</div>
+                            <p id="audio-${index}" style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:#e2e8f0; margin:0; word-break:break-word;">${veoAudioPrompt}</p>
+                        </div>
+                    </div>
 
                     <!-- STEP 1: KEYFRAME PROMPT -->
                     <div style="background:var(--bg-input); padding:10px 12px; border-radius:6px; border:1px solid var(--primary); margin-bottom:10px;">
@@ -3923,11 +3965,6 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
                         <p id="i2v-${index}" style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#e2e8f0; margin:0; white-space:pre-wrap; word-break:break-word;">${i2vPrompt}</p>
                     </div>
 
-                    ${shot.audio_cues ? `
-                    <div style="font-size:0.78rem; color:var(--text-muted); background:rgba(0,0,0,0.2); padding:6px 10px; border-radius:4px; margin-bottom:4px;">
-                        🔊 <strong>Audio & Lipsync:</strong> ${shot.audio_cues}
-                    </div>` : ''}
-
                     ${shot.director_notes ? `
                     <div style="font-size:0.75rem; color:#94a3b8; padding:4px 10px; font-style:italic;">
                         🎬 <strong>Regie-Hinweis:</strong> ${shot.director_notes}
@@ -3938,15 +3975,54 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
         }
     }
 
-    // Transfer Shot directly into Veo 3.1 Pro Studio
-    window.transferShotToVeoStudio = function(shotIndex) {
-        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || !lastGeneratedStoryboard.shots[shotIndex]) {
-            showToast("Kein Shot gefunden!", true);
+    // --- VEO 3.1 PRO STUDIO MULTI-SHOT INTEGRATION ---
+    window.currentVeoStoryboardShotIndex = 0;
+
+    window.transferFullStoryboardToVeo = function() {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || lastGeneratedStoryboard.shots.length === 0) {
+            showToast("Kein Storyboard zum Übertragen gefunden!", true);
             return;
         }
+
+        const shots = lastGeneratedStoryboard.shots;
+        const seqContainer = document.getElementById('veo_seq_chips_container');
+        const seqBar = document.getElementById('veo_storyboard_sequence_bar');
+
+        if (seqContainer) {
+            seqContainer.innerHTML = shots.map((shot, idx) => `
+                <button type="button" class="veo-seq-chip ${idx === 0 ? 'active' : ''}" id="veo-seq-chip-${idx}" onclick="selectVeoStoryboardShot(${idx})">
+                    <span>🎬 Shot ${shot.shot_number || (idx + 1)}</span>
+                    <span style="font-size:0.68rem; opacity:0.8;">(${shot.duration_seconds || 5}s)</span>
+                </button>
+            `).join('');
+        }
+
+        if (seqBar) seqBar.style.display = 'flex';
+
+        // Load shot 0
+        selectVeoStoryboardShot(0);
+
+        // Switch to Cinema -> Veo Studio Tab
+        if (typeof window.switchTab === 'function') window.switchTab('cinema');
+        if (typeof window.switchCineSub === 'function') window.switchCineSub('veo-studio');
+
+        showToast(`🎬 Gesamtes Storyboard (${shots.length} Shots) in Veo 3.1 Pro Studio übertragen! ✨`);
+    };
+
+    window.selectVeoStoryboardShot = function(shotIndex) {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || !lastGeneratedStoryboard.shots[shotIndex]) {
+            return;
+        }
+        window.currentVeoStoryboardShotIndex = shotIndex;
         const shot = lastGeneratedStoryboard.shots[shotIndex];
         const meta = lastGeneratedStoryboard.storyboard_meta || {};
         const charBible = Array.isArray(lastGeneratedStoryboard.character_bible) ? lastGeneratedStoryboard.character_bible[0] : (lastGeneratedStoryboard.character_bible || {});
+
+        // Update active chip
+        document.querySelectorAll('.veo-seq-chip').forEach((c, i) => {
+            if (i === shotIndex) c.classList.add('active');
+            else c.classList.remove('active');
+        });
 
         const subjectEl = document.getElementById('veo_subject');
         const actionEl = document.getElementById('veo_action');
@@ -3968,7 +4044,18 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
             const rigStr = shot.camera_rig ? `${shot.camera_rig.camera || ''} ${shot.camera_rig.focal_length || ''}` : '';
             cameraEl.value = `${shot.camera_motion || 'Cinematic Camera'}${rigStr ? ' (' + rigStr + ')' : ''}`;
         }
-        if (soundEl) soundEl.value = shot.audio_cues || (shot.dialogue ? `Dialog: "${shot.dialogue.line}"` : "Cinematic Sound Design");
+        
+        // Comprehensive sound population
+        if (soundEl) {
+            const audioDesign = shot.audio_design || {};
+            if (audioDesign.veo_audio_prompt) {
+                soundEl.value = audioDesign.veo_audio_prompt;
+            } else if (shot.dialogue && shot.dialogue.line) {
+                soundEl.value = `Dialog (${shot.dialogue.speaker || 'Charakter'}): "${shot.dialogue.line}" ${shot.dialogue.voice_tone ? '[' + shot.dialogue.voice_tone + ']' : ''}. ${shot.audio_cues || 'Cinematic Sound Design'}`;
+            } else {
+                soundEl.value = shot.audio_cues || "Cinematic Sound Design, crisp ambient atmosphere";
+            }
+        }
 
         // Set mode to I2V
         const modeSelect = document.getElementById('veoModeSelect');
@@ -3977,11 +4064,38 @@ Sei präzise, filmisch und extrem kreativ. Keine langen Erklärungen, nur direkt
             if (typeof window.updateVeoModeHighlight === 'function') window.updateVeoModeHighlight();
         }
 
+        if (typeof window.updateLiveVeoPrompt === 'function') window.updateLiveVeoPrompt();
+    };
+
+    // Transfer Shot directly into Veo 3.1 Pro Studio
+    window.transferShotToVeoStudio = function(shotIndex) {
+        if (!lastGeneratedStoryboard || !lastGeneratedStoryboard.shots || !lastGeneratedStoryboard.shots[shotIndex]) {
+            showToast("Kein Shot gefunden!", true);
+            return;
+        }
+
+        // Ensure sequence chips are built
+        const seqContainer = document.getElementById('veo_seq_chips_container');
+        const seqBar = document.getElementById('veo_storyboard_sequence_bar');
+        const shots = lastGeneratedStoryboard.shots;
+
+        if (seqContainer) {
+            seqContainer.innerHTML = shots.map((s, idx) => `
+                <button type="button" class="veo-seq-chip ${idx === shotIndex ? 'active' : ''}" id="veo-seq-chip-${idx}" onclick="selectVeoStoryboardShot(${idx})">
+                    <span>🎬 Shot ${s.shot_number || (idx + 1)}</span>
+                    <span style="font-size:0.68rem; opacity:0.8;">(${s.duration_seconds || 5}s)</span>
+                </button>
+            `).join('');
+        }
+        if (seqBar) seqBar.style.display = 'flex';
+
+        selectVeoStoryboardShot(shotIndex);
+
         // Switch to Cinema -> Veo Studio Tab
         if (typeof window.switchTab === 'function') window.switchTab('cinema');
         if (typeof window.switchCineSub === 'function') window.switchCineSub('veo-studio');
 
-        showToast(`🎬 Shot ${shot.shot_number || (shotIndex + 1)} in Veo 3.1 Pro Studio übertragen! (I2V Modus aktiv) ✨`);
+        showToast(`🎬 Shot ${shots[shotIndex].shot_number || (shotIndex + 1)} in Veo 3.1 Pro Studio übertragen! (I2V Modus aktiv) ✨`);
     };
 
     // Transfer Shot into AI Camera Director

@@ -241,17 +241,31 @@ def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
         motion_info = s.get('camera_motion', 'Smooth cinematic camera movement')
         detail_info = s.get('director_notes', '') or str(s.get('keyframe_image_prompt', ''))[:60]
         
+        # Extract audio / dialogue for the panel
+        audio_panel = ""
+        d_val = s.get('dialogue')
+        if isinstance(d_val, dict) and d_val.get('line'):
+            audio_panel = f"Dialogue: '{d_val.get('line')}'"
+        elif isinstance(d_val, str) and d_val.strip():
+            audio_panel = f"Dialogue: '{d_val.strip()}'"
+        elif s.get('audio_design') and isinstance(s.get('audio_design'), dict) and s['audio_design'].get('dialogue_line'):
+            audio_panel = f"Dialogue: '{s['audio_design']['dialogue_line']}'"
+        elif s.get('audio_cues'):
+            audio_panel = f"Audio: {str(s.get('audio_cues')).split('/')[0].strip()}"
+
         # Strip all bracket characters to prevent Midjourney placeholder hallucinations
         cam_info = str(cam_info).replace('[', '').replace(']', '')
         light_info = str(light_info).replace('[', '').replace(']', '')
         motion_info = str(motion_info).replace('[', '').replace(']', '')
         detail_info = str(detail_info).replace('[', '').replace(']', '')
+        audio_panel = str(audio_panel).replace('[', '').replace(']', '')
         
+        audio_part = f" {audio_panel}." if audio_panel else ""
         panel_str = (
             f"Scene {s_num} ({s_dur}s badge): {framing}. "
             f"Camera: {cam_info}. "
             f"Visual: {light_info}. "
-            f"Action: {motion_info}. "
+            f"Action: {motion_info}.{audio_part} "
             f"Product detail: {detail_info}."
         )
         panels_text.append(panel_str)
@@ -264,7 +278,7 @@ def build_agency_master_prompt(meta, shots, ar_tag='--ar 16:9'):
         f"Top banner with bold uppercase typography 'PREMIUM ADVERTISING AGENCY PRESENTATION: {title}'. "
         f"Header features 4 distinct colored metadata badge pills: 'Duration: {dur} Seconds', 'Style: {genre}', 'Focus: {focus_key}', 'Audio: {audio_key}', and a top-right info card 'Why This Style Works: High-impact cinematic visual pacing designed for maximum engagement and brand recall'. "
         f"Below is {grid_desc}. Each scene card has a top-left 'Scene X' badge, a top-right red duration badge (e.g. '{first_dur}s'), and a clean white border. "
-        f"Underneath each image panel are 4 clean structured typographic subtitle lines (Camera, Visual, Action, Product detail): {scenes_joined} "
+        f"Underneath each image panel are clean structured typographic subtitle lines (Camera, Visual, Action, Dialogue/Audio, Product detail): {scenes_joined} "
         f"Warm cream off-white editorial presentation board background, sharp graphic design layout, crisp typography, clean card margins, commercial advertising photography, 8k resolution concept art {ar_tag}"
     )
     return prompt
@@ -442,16 +456,27 @@ STRIKTE REGIE- & SCHEMA-REGELN:
    - `keyframe_image_prompt` (T2I für Nano Banana / Midjourney): Vollständiger Prompt mit @Avatar-Tags, Kleidung, Setting, Camera Rig, Kelvin-Licht und {ar_tag}.
    - `i2v_motion_prompt` (I2V für Veo 3.1 / Runway): Strikt gegliedert:
      "Camera Movement: [Exakter Befehl aus camera_motion]. Subject Motion: [Physische Motorik und Gestik ohne redundante Farbbeschreibungen]. Environment Physics: [Partikel, Reflexionen, Regen, Rauch, Lichtbrechung]. Sound Design: [Natürliche Atmo und Soundkulisse]. FPS & Motion: 24fps, fluid cinematic motion."
-7. **DIALOGUE**: `dialogue` ist ein Objekt mit: {{ "speaker": "@Avatar", "line": "Gesprochener Satz", "language": "{language}" }}.
+7. **AUDIO, DIALOGUE & SOUND DESIGN**: Sound und Sprache sind ein essenzieller Kernbestandteil des Storyboards! Jedes Shot-Objekt MUSS enthalten:
+   - `dialogue`: {{ "speaker": "@Avatar", "line": "Gesprochener Satz (falls gesprochen wird, sonst leer)", "voice_tone": "Stimm-Tonalität (z. B. 'trockene, tiefe Stimme' oder 'flüsternd, erotisch')", "language": "{language}" }}
+   - `audio_cues`: "Dialogue: '[Satz]' / SFX: [Konkrete Geräusche & Foley] / Ambience: [Raum-Atmo & Soundscape]"
+   - `audio_design`: {{
+       "dialogue_speaker": "@Avatar",
+       "dialogue_line": "Gesprochene Zeile (z. B. 'Ich gehe aus.')",
+       "voice_tone": "Präzise Beschreibung der Tonlage & Mimik (z. B. 'Tief, gelassen, ironisches Schmunzeln')",
+       "sfx_foley": "Konkrete physische Geräusche (z. B. 'Zischen der Flamme, Knacken von Bienenwachs, dumpfer Aufprall')",
+       "ambient_soundscape": "Akustische Raumbeschreibung (z. B. 'Warme Wohnzimmer-Stille, leises Knistern')",
+       "veo_audio_prompt": "Formatierter Prompt für Veo 3.1 & TTS: 'Voice (@Avatar): \"[Line]\" spoken with [Tone]. SFX: [Foley]. Ambience: [Atmo].'"
+     }}
 8. **CHARACTER BIBLE**: Array aller auftretenden Charaktere mit `avatar_tag`, `character_id`, `name`, `demographics`, `physical_appearance`, `wardrobe`, `master_prompt_string`.
 9. **AGENCY STORYBOARD PRESENTATION BOARD (MASTER PROMPT)**: 
    `master_contact_sheet_prompt` MUSS ein vollständiger, extrem detailreicher Image-Prompt für Nano Banana / Midjourney sein, der ein **vollständiges Agency-Pitch-Deck Storyboard Poster** generiert (exakt wie ein professionelles Werbeagentur-Pitchboard):
    - **Header oben**: Typografie-Header 'PREMIUM ADVERTISING AGENCY PRESENTATION: [TITEL]' mit 4 farbigen Meta-Pills ('Duration: {duration} Seconds', 'Style: {genre}', 'Focus: [Hauptmotiv/Produkt/@Avatar]', 'Audio: [Key Sound/Ambient]') und Infobox rechts 'Why This Style Works: [Visuelle Begründung]'.
    - **Strukturiertes Szenen-Grid**: Sequenzielle Szenenkarten (Scene 1, Scene 2, Scene 3...). Jede Karte besitzt ein 'Scene X'-Badge oben links und ein rundes Zeit-Badge (z. B. '2s', '3s', '4s') oben rechts.
-   - **4 strukturierte Info-Zeilen unter JEDEM Szenenbild**:
+   - **4-5 strukturierte Info-Zeilen unter JEDEM Szenenbild**:
      - 'Camera:' [Winkel, z. B. Overhead / Macro close-up / Controlled push-in / Low angle hero shot]
      - 'Visual:' [Optik, Beleuchtung, Texturen, Materialien]
      - 'Action:' [Physische Bewegung im Bild]
+     - 'Dialogue/Audio:' [Spoken Line und Key SFX, z.B. Dialogue: 'Ich gehe aus.' / Sizzling flame extinguishing]
      - 'Key Detail / Focus:' [Dramaturgischer Fokus / Nutzenversprechen]
    - **Gestaltung**: Heller, warmer Cream-Hintergrund, präzises Grafikdesign, gestochen scharfe Typografie, saubere Karten-Rahmen, 8k Commercial Advertising Quality {ar_tag}.
 
@@ -466,7 +491,7 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
     "total_shots": {estimated_shots},
     "aspect_ratio": "{aspect_ratio}",
     "core_narrative": "Prägnante 2-3 Sätze Zusammenfassung der Handlung",
-    "master_contact_sheet_prompt": "A professional advertising agency presentation board, campaign pitch deck storyboard infographic for a cinematic commercial film. Header at top with bold typography 'PREMIUM ADVERTISING AGENCY PRESENTATION: [TITEL]', featuring 4 colored metadata badge pills: 'Duration: {duration} Seconds', 'Style: {genre}', 'Focus: [Key Subject/@Avatar]', 'Audio: [Main Sound]', and an analytical top-right info card 'Why This Style Works: [Psychological aesthetic rationale]'. Below is a clean, structured graphic design storyboard grid with sequential numbered scene cards. Each scene card has a top-left 'Scene X' badge and a top-right red duration circle badge '[Xs]'. Underneath each cinematic frame are 4 detailed typography caption lines: 'Camera: [Camera angle & lens]', 'Visual: [Lighting, texture, materials]', 'Action: [Dynamic movement]', 'Key Detail: [Story/product focus]'. Sequential scenes: Scene 1 ([X]s): [Wide establishing visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 2 ([X]s): [Medium subject visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 3 ([X]s): [Dynamic close-up visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 4 ([X]s): [Action climax visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 5 ([X]s): [Emotional reaction visual], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Scene 6 ([X]s): [Cinematic final packshot/resolution], Camera: [Angle], Visual: [Texture], Action: [Motion], Key Detail: [Focus]. Warm cream editorial presentation background, sharp graphic design layout, crisp typography, clean card borders, professional advertising photography, 8k resolution concept art {ar_tag}"
+    "master_contact_sheet_prompt": "A professional advertising agency presentation board, campaign pitch deck storyboard infographic for a cinematic commercial film. Header at top with bold typography 'PREMIUM ADVERTISING AGENCY PRESENTATION: [TITEL]', featuring 4 colored metadata badge pills: 'Duration: {duration} Seconds', 'Style: {genre}', 'Focus: [Key Subject/@Avatar]', 'Audio: [Main Sound]', and an analytical top-right info card 'Why This Style Works: [Psychological aesthetic rationale]'. Below is a clean, structured graphic design storyboard grid with sequential numbered scene cards. Each scene card has a top-left 'Scene X' badge and a top-right red duration circle badge '[Xs]'. Underneath each cinematic frame are structured typography caption lines: 'Camera: [Camera angle & lens]', 'Visual: [Lighting, texture, materials]', 'Action: [Dynamic movement]', 'Dialogue/Audio: [Spoken line & SFX]', 'Key Detail: [Story/product focus]'. Warm cream editorial presentation background, sharp graphic design layout, crisp typography, clean card borders, professional advertising photography, 8k resolution concept art {ar_tag}"
   }},
   "character_bible": [
     {{
@@ -497,9 +522,18 @@ Antworte AUSSCHLIESSLICH als valides JSON-Objekt (kein Markdown-Block, keine Beg
       "dialogue": {{
         "speaker": "@Hero_Name",
         "line": "Die Energiequelle reagiert noch.",
+        "voice_tone": "Konzentriert, leise flüsternd",
         "language": "{language}"
       }},
-      "audio_cues": "Dialogue: 'Die Energiequelle reagiert noch.' / Heavy atmospheric ambient",
+      "audio_cues": "Dialogue: 'Die Energiequelle reagiert noch.' / SFX: Electric hum, water drip / Ambience: Cold reverberant laboratory",
+      "audio_design": {{
+        "dialogue_speaker": "@Hero_Name",
+        "dialogue_line": "Die Energiequelle reagiert noch.",
+        "voice_tone": "Konzentriert, leise flüsternd mit leichtem Hall",
+        "sfx_foley": "Leises Summen des Generators, rhythmisches Wassertropfen auf Beton, Reiben von taktischem Stoff",
+        "ambient_soundscape": "Kalter, verlassener Laborraum mit tiefem Raumbrummen",
+        "veo_audio_prompt": "Voice (@Hero_Name): 'Die Energiequelle reagiert noch.' whispered in German with subtle spatial reverb. SFX: Low generator hum, distant rhythmic water drops, cloth rustle. Ambience: Cold industrial laboratory reverb."
+      }},
       "director_notes": "Dynamischer Einstiegs-Hook (4s). Ruhige Dolly-Fahrt für sofortigen Spannungsaufbau."
     }}
   ]
@@ -622,25 +656,37 @@ Antworte AUSSCHLIESSLICH im folgenden validen JSON-Format:
 
 @app.route('/api/copilot', methods=['POST'])
 def run_copilot():
-    data = request.json
-    idea = data.get('idea', '')
+    data = request.json or {}
+    idea = data.get('idea', '').strip()
+    current_context = data.get('current_context', {})
+    is_modification = data.get('is_modification', False)
+    model = data.get('model', 'gemini-3.5-flash-lite')
     lm_url = data.get('lm_url', 'http://127.0.0.1:1234/v1')
     
     if not idea:
-        return jsonify({"error": "Keine Idee angegeben"}), 400
+        return jsonify({"error": "Keine Idee oder Änderung angegeben"}), 400
         
-    print(f"[Co-Pilot] Analyzing idea with gemini-3.5-flash-lite: {idea[:60]}...")
+    print(f"[Co-Pilot] Analyzing idea (is_mod={is_modification}) with {model}: {idea[:60]}...")
     
     sys_prompt = (
-        "Du bist der KI-Co-Pilot für ein professionelles Bild- und Video-Prompt-Engineering-Tool. "
-        "Deine Aufgabe ist es, die Idee des Nutzers vollständig zu analysieren, festzustellen, ob eine Person im Mittelpunkt steht, "
-        "einen sehr ausführlichen, hochauflösenden englischen Gesamt-Prompt (baseConcept) zu formulieren (der alle Details, Produkte, Stimmung, Atmosphäre, Hintergrund enthält), "
-        "und die perfekten Dropdown-Parameter für Kamera, Optik, Licht, Komposition und Oberflächen-Physik auszuwählen. "
-        "Antworte AUSSCHLIESSLICH in folgendem gültigen JSON-Format (keine Markdown-Codeblocks, kein Fließtext davor oder danach):\n"
+        "Du bist der weltweit führende KI-Prompt-Architekt und interaktive Co-Pilot für Bildgeneratoren (Midjourney v6.1, Flux, Nano Banana, Stable Diffusion).\n\n"
+        "DEINE REGELN:\n"
+        "1. WENN EIN BESTEHENDER KONTEXT VORLIEGT (is_modification=true oder Felder bereits befüllt):\n"
+        "   - Behandle die Benutzereingabe als gezielten ÄNDERUNGSWUNSCH / VERFEINERUNG!\n"
+        "   - Behalte alle bisherigen, nicht geänderten Kernelemente des Motivs (Charakter, Stil, Grundsetting) strikt bei.\n"
+        "   - Binde die gewünschten Änderungen nahtlos in das englische 'baseConcept' und die entsprechenden Dropdown-Felder ein.\n"
+        "   - Erstelle eine prägnante 'changes_summary' auf Deutsch (z. B. 'Kamera auf 85mm f/1.8 umgestellt, Licht auf goldenen Sonnenuntergang geändert').\n"
+        "2. WENN ES EINE NEUE IDEE IST (is_modification=false):\n"
+        "   - Entwirf ein vollständiges, hochauflösendes Konzept ('baseConcept') und wähle die optimalen Dropdown-Werte aus.\n"
+        "   - 'changes_summary' bleibt leer oder beschreibt den Gesamt-Look.\n"
+        "3. FORMULIERE EINE SPANNENDE WIRKUNGS-ANALYSE ('reasoning') auf Deutsch (2-3 Sätze): Warum diese Einstellungen und Änderungen die visuelle Bildwirkung maximieren.\n\n"
+        "Antworte AUSSCHLIESSLICH in folgendem gültigen JSON-Format:\n"
         "{\n"
+        "  \"isModification\": true oder false,\n"
         "  \"hasPerson\": true oder false (true NUR wenn eine Person/Mensch/Charakter beschrieben wird, sonst false),\n"
-        "  \"baseConcept\": \"Vollständige, extrem detaillierte englische Übersetzung und Ausformulierung der gesamten Nutzer-Idee.\",\n"
-        "  \"reasoning\": \"Eine kurze, begeisternde Erklärung (2-3 Sätze auf Deutsch) für Anfänger, warum diese Kamera- und Lichtwerte gewählt wurden.\",\n"
+        "  \"baseConcept\": \"Vollständige, extrem detaillierte englische Übersetzung und Ausformulierung der gesamten Nutzer-Idee (inkl. aller Änderungen).\",\n"
+        "  \"reasoning\": \"Eine begeisternde Erklärung auf Deutsch (2-3 Sätze), warum diese Kamera-, Licht- und Stilwerte gewählt/angepasst wurden.\",\n"
+        "  \"changes_summary\": \"Kurze Aufzählung der durchgeführten Änderungen auf Deutsch (z.B. 'Lichtstimmung auf Chiaroscuro angepasst, Bokeh verstärkt').\",\n"
         "  \"fields\": {\n"
         "    \"gender\": \"woman|man|non-binary person|android robot (NUR WENN hasPerson=true!)\",\n"
         "    \"ageGroup\": \"20 years old, young adult|30 years old (NUR WENN hasPerson=true!)\",\n"
@@ -670,16 +716,24 @@ def run_copilot():
         "    \"colorFidelity\": \"raw color tones, flat profile, low contrast, desaturated|warm Kodak Gold analog film tones, golden highlights|vibrant Fujifilm Velvia saturated landscape colors|gritty bleach bypass color grading, desaturated high contrast|vibrant Technicolor 3-strip vintage color palette|vivid colors, high saturation, instagram filter|black and white, monochrome\",\n"
         "    \"filmStock\": \"Kodak Portra 400 film grain|Cinestill 800T halation|Fujifilm Velvia 50|digital crisp 8k\"\n"
         "  }\n"
-        "}\n"
-        "SEHR WICHTIG: Wenn KEINE Person im Prompt beschrieben wird, setze 'hasPerson' auf false und LASS GENDER, CLOTHING, AGEGROUP, ETHNICITY, EXPRESSION, HAIRCOLOR UND ACTION VOLLSTÄNDIG WEG!"
+        "}"
     )
+    
+    user_content = f"Eingabe des Nutzers:\n{idea}"
+    if current_context:
+        user_content += f"\n\nBestehender Bild-Kontext (bereits konfigurierte Werte):\n{json.dumps(current_context, ensure_ascii=False)}"
+        user_content += f"\nModus: {'GEZIELTE ÄNDERUNG / VERFEINERUNG DES BESTEHENDEN BILDES' if is_modification else 'NEU-ENTWURF'}"
     
     messages = [
         {"role": "system", "content": sys_prompt},
-        {"role": "user", "content": f"Idee des Nutzers:\n{idea}"}
+        {"role": "user", "content": user_content}
     ]
     
-    res_text = get_ai_response(messages, model='gemini-3.5-flash-lite', temperature=0.3, lm_studio_base=lm_url)
+    res_text = None
+    for ev_type, ev_val in get_ai_response_stream(messages, model=model, temperature=0.4, lm_studio_base=lm_url, timeout=30.0, response_format={"type": "json_object"}):
+        if ev_type == 'result':
+            res_text = ev_val
+            break
     
     if not res_text:
         return jsonify({"error": "Leere Antwort vom KI Co-Pilot."}), 500
@@ -696,7 +750,9 @@ def run_copilot():
     except Exception as e:
         print(f"[Co-Pilot Error] Could not parse JSON: {e}\nRaw output: {res_text}")
         return jsonify({
-            "reasoning": "Der Co-Pilot hat deine Idee verarbeitet und grundlegende Einstellungen gewählt.",
+            "isModification": is_modification,
+            "reasoning": "Der Co-Pilot hat deine Eingabe verarbeitet und die Einstellungen optimiert.",
+            "changes_summary": "Einstellungen aktualisiert.",
             "fields": {
                 "sceneType": "cinematic realism"
             }
