@@ -1275,5 +1275,194 @@ input[type="radio"] {
     box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
 }
 
+/* -------------------------------------------------------------------------- */
+/* 9. ZERO-REFLOW 3D CAMERA VIEWPORT & GIMBAL-LOCK PREVENTION                 */
+/* -------------------------------------------------------------------------- */
+.camera-3d-viewport {
+    position: relative;
+    width: 100%;
+    min-height: 240px;
+    height: 260px;
+    background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    perspective: 800px;
+    cursor: grab;
+    user-select: none;
+}
+
+.camera-3d-viewport.is-dragging {
+    cursor: grabbing;
+}
+
+.camera-3d-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-style: preserve-3d;
+    /* GIMBAL-LOCK PREVENTION SPECIFICATION (Blueprint v2.1) */
+    transform: translateZ(var(--cam-fov, 0px)) rotateZ(var(--cam-roll, 0deg)) rotateX(var(--cam-pitch, 0deg)) rotateY(var(--cam-yaw, 0deg));
+    transition: transform 0.05s ease-out;
+    will-change: transform;
+}
+
+.camera-3d-rig {
+    position: relative;
+    width: 140px;
+    height: 90px;
+    transform-style: preserve-3d;
+}
+
+.camera-3d-sensor {
+    position: absolute;
+    inset: 0;
+    border: 2px solid #818cf8;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 6px;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-style: preserve-3d;
+}
+
+.camera-3d-grid {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+    transform: rotateX(90deg) translateZ(-60px);
+    pointer-events: none;
+}
+
+.camera-3d-frustum {
+    position: absolute;
+    width: 180px;
+    height: 120px;
+    border: 1px dashed rgba(56, 189, 248, 0.4);
+    transform: translateZ(80px);
+    pointer-events: none;
+}
+
+.camera-3d-hud {
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.hud-tag {
+    font-size: 0.68rem;
+    font-family: var(--font-code);
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
+}
+
+.hud-lens {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 10. CREATIVE / PRO PARAMETER LAYER TRANSITIONS                             */
+/* -------------------------------------------------------------------------- */
+.pro-parameter-layer {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.3s ease;
+    pointer-events: none;
+    margin-top: 0;
+}
+
+.pro-parameter-layer.active,
+.pro-parameter-layer.expanded,
+.pro-parameter-layer.open {
+    max-height: 1200px;
+    opacity: 1;
+    pointer-events: auto;
+    margin-top: 15px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 11. RESPONSIVE BREAKPOINTS (Desktop / Tablet / Mobile)                     */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+    body {
+        flex-direction: column;
+    }
+
+    aside {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px;
+    }
+
+    .nav-section {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .nav-btn {
+        flex: 1 1 calc(33.333% - 6px);
+        margin-bottom: 0;
+    }
+
+    main {
+        padding: 15px;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .brand {
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+    }
+
+    .nav-btn {
+        flex: 1 1 100%;
+        font-size: 0.8rem;
+    }
+
+    .card {
+        padding: 15px;
+    }
+
+    .camera-3d-viewport {
+        height: 200px;
+    }
+
+    .treatment-meta-chips,
+    .veo-sequence-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .veo-seq-chip {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
+
 
 

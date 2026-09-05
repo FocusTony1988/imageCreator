@@ -9,14 +9,14 @@ from flask_cors import CORS
 from openai import OpenAI
 from dotenv import load_dotenv
 
+import io
 import tempfile
-import cv2
-import numpy as np
 from pathlib import Path
-from watermark_engine.gemini_engine import GeminiEngine
-from watermark_engine import region_eraser
-from watermark_engine import image_io
-from watermark_engine.metadata import remove_ai_metadata
+
+# --- CORE ARCHITECTURE BLUEPRINT (v2.1) IMPORTS ---
+from core.imaging import optimize_and_remove_watermark_async, imaging_pool
+from core.orchestrator import orchestrator, BoundedLRUCache, CircuitBreaker, StoryboardContextCompressor, generate_cache_key
+from core.streaming import format_sse, ping_sse, get_sse_headers, safe_sse_stream
 
 # Lade Umgebungsvariablen (.env Datei) für lokale Entwicklung
 load_dotenv()
@@ -1065,49 +1065,41 @@ def generate_solution():
 @app.route('/api/watermark/remove', methods=['POST'])
 def remove_watermark():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({"error": "Keine Datei hochgeladen"}), 400
     
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"error": "Empty file"}), 400
+        return jsonify({"error": "Dateiname ist leer"}), 400
 
     remove_synthid = request.form.get('remove_synthid') == 'true'
 
-    temp_path = None
-    out_path = None
     try:
-        # Save uploaded file to a temporary file
-        fd, temp_path = tempfile.mkstemp(suffix=".png")
-        os.close(fd)
-        file.save(temp_path)
+        image_bytes = file.read()
+        if not image_bytes:
+            return jsonify({"error": "Leere Bilddatei erhalten"}), 400
 
-        # Read image
-        img = image_io.imread(temp_path)
-        if img is None:
-            return jsonify({"error": "Could not read image"}), 400
-        
-        # Detect & remove visible watermark
-        engine = GeminiEngine()
-        mask = engine.footprint_mask(img, force=True)
-        
-        out_fd, out_path = tempfile.mkstemp(suffix=".png")
-        os.close(out_fd)
+        # Asynchrone, ThreadPool-gehärtete Pipeline mit Gevent/OOM-Schutz
+        result_bytes = optimize_and_remove_watermark_async(
+            image_bytes=image_bytes,
+            max_dim=1536,
+            timeout_sec=25.0,
+            remove_synthid=remove_synthid
+        )
 
-        if mask is not None:
-            cleaned = region_eraser.erase(img, mask=mask)
-            image_io.imwrite(out_path, cleaned)
-        else:
-            import shutil
-            shutil.copyfile(temp_path, out_path)
-        
-        # If requested, strip SynthID metadata (C2PA / EXIF / XMP)
-        if remove_synthid:
-            remove_ai_metadata(Path(out_path), Path(out_path))
-
-        return send_file(out_path, mimetype='image/png')
-            
+        return send_file(
+            io.BytesIO(result_bytes),
+            mimetype='image/png',
+            as_attachment=False,
+            download_name='watermark_removed.png'
+        )
+    except RuntimeError as r_err:
+        # Überlastung / Queue voll -> HTTP 503
+        return jsonify({"error": str(r_err)}), 503
+    except TimeoutError as t_err:
+        # Timeout -> HTTP 504
+        return jsonify({"error": str(t_err)}), 504
     except Exception as e:
-        print(f"Error processing watermark: {e}")
+        print(f"[Watermark Error] Pipeline failure: {e}")
         return jsonify({"error": str(e)}), 500
 
 
